@@ -2,12 +2,16 @@
 
 ## [Context7](https://github.com/upstash/context7)
 
-### Claude code
+<details>
+<summary><strong>Claude Code</strong></summary>
+
 ```sh
 claude mcp add context7 -- npx -y @upstash/context7-mcp
 ```
+</details>
 
-### VS Code
+<details>
+<summary><strong>VS Code</strong></summary>
 
 ```jsonc
 //  in .vscode/mcp.json
@@ -17,14 +21,16 @@ claude mcp add context7 -- npx -y @upstash/context7-mcp
             "context7": {
             "type": "stdio",
             "command": "npx",
-            "args": ["-y", "@upstash/context7-mcp", "--api-key", "YOUR_API_KEY"]
+            "args": ["-y", "@upstash/context7-mcp"]
             }
         }
     }
 }
 ```
+</details>
 
-### Google Antigravity
+<details>
+<summary><strong>Google Antigravity</strong></summary>
 
 ```jsonc
 // https://antigravity.google/docs/mcp
@@ -39,22 +45,28 @@ claude mcp add context7 -- npx -y @upstash/context7-mcp
   }
 }
 ```
+</details>
 
 ## [Playwright MCP](https://github.com/microsoft/playwright-mcp)
 
-### Claude Code
+<details>
+<summary><strong>Claude Code</strong></summary>
 
 ```sh
 claude mcp add playwright npx @playwright/mcp@latest
 ```
+</details>
 
-### VS Code
+<details>
+<summary><strong>VS Code</strong></summary>
+
 ```sh
 code --add-mcp '{"name":"playwright","command":"npx","args":["@playwright/mcp@latest"]}'
 ```
+</details>
 
-
-### Google Antigravity
+<details>
+<summary><strong>Google Antigravity</strong></summary>
 
 ```jsonc
 // https://antigravity.google/docs/mcp
@@ -69,21 +81,28 @@ code --add-mcp '{"name":"playwright","command":"npx","args":["@playwright/mcp@la
   }
 }
 ```
+</details>
 
 ## [Chrome Dev Tools](https://github.com/ChromeDevTools/chrome-devtools-mcp)
 
-### Claude Code
+<details>
+<summary><strong>Claude Code</strong></summary>
 
 ```sh
 claude mcp add chrome-devtools npx chrome-devtools-mcp@latest
 ```
+</details>
 
-### VS Code
+<details>
+<summary><strong>VS Code</strong></summary>
+
 ```sh
 code --add-mcp '{"name":"io.github.ChromeDevTools/chrome-devtools-mcp","command":"npx","args":["-y","chrome-devtools-mcp"],"env":{}}'
 ```
+</details>
 
-### Google Antigravity
+<details>
+<summary><strong>Google Antigravity</strong></summary>
 
 ```jsonc
 // https://antigravity.google/docs/mcp
@@ -100,19 +119,23 @@ code --add-mcp '{"name":"io.github.ChromeDevTools/chrome-devtools-mcp","command"
   }
 }
 ```
+</details>
 
 ## [Github MCP](https://github.com/github/github-mcp-server)
 
-
-### Claude Code
+<details>
+<summary><strong>Claude Code</strong></summary>
 
 ```sh
 # https://github.com/github/github-mcp-server/blob/main/docs/installation-guides/install-claude.md
 
 claude mcp add --transport http github https://api.githubcopilot.com/mcp -H "Authorization: Bearer $(grep GITHUB_PAT .env | cut -d '=' -f2)"
 ```
+</details>
 
-### VS Code
+<details>
+<summary><strong>VS Code</strong></summary>
+
 ```jsonc
 // https://github.com/github/github-mcp-server?tab=readme-ov-file#install-in-github-copilot-on-vs-code
 
@@ -145,3 +168,4 @@ claude mcp add --transport http github https://api.githubcopilot.com/mcp -H "Aut
   }
 }
 ```
+</details>
