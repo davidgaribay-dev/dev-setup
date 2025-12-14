@@ -1,0 +1,6 @@
+# Environment variables
+.env
+
+# Docker volumes
+containers/gitea/gitea/
+containers/gitea/postgres/

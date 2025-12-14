@@ -1,10 +1,11 @@
-# Scripts
+# dev-setup
 
-Personal collection of scripts and setup guides for development environment configuration.
+Personal development environment configuration including setup scripts, guides, and container definitions.
 
 ## Contents
 
 - [setups/](setups/) - Environment setup guides for different platforms
+- [containers/](containers/) - Container configurations and definitions
 
 ## Setup Guides
 
