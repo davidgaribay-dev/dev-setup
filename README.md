@@ -2,6 +2,26 @@
 
 A modern web application for browsing and visualizing your Claude Code conversation history with advanced features like real-time ETL progress streaming, Monaco code editor, statistics dashboards, and dark mode support.
 
+## Screenshots & Demo
+
+<div align="center">
+
+### Light Mode in Action
+
+<video src="https://i6ob6ensqrtpgseh.public.blob.vercel-storage.com/light-mode.mp4" controls width="800"></video>
+
+<img src="https://i6ob6ensqrtpgseh.public.blob.vercel-storage.com/stats.png" alt="Statistics Dashboard - View detailed token usage, model distribution, and activity timelines" width="800">
+
+### Dark Mode in Action
+
+<video src="https://i6ob6ensqrtpgseh.public.blob.vercel-storage.com/dark-mode.mp4" controls width="800"></video>
+
+<img src="https://i6ob6ensqrtpgseh.public.blob.vercel-storage.com/raw-nav-bar.png" alt="Navigation Interface - Browse projects, conversations, and search with Monaco code editor" width="800">
+
+</div>
+
+---
+
 ## Architecture
 
 This is a **pnpm monorepo** with four packages:
