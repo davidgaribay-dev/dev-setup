@@ -1,12 +1,19 @@
 # dev-setup
 
-Personal development environment configuration including setup scripts, guides, and container definitions.
+Personal development environment configuration including infrastructure as code and container definitions.
 
 ## Contents
 
-- [setups/](setups/) - Environment setup guides for different platforms
-- [containers/](containers/) - Container configurations and definitions
+- [iac/](iac/) - Infrastructure as Code for development VMs
 - [vms/](vms/) - Virtual machine configurations for self-hosted services
+
+## Infrastructure as Code
+
+### Claude Development VM
+- [claude-vm](iac/claude-vm/) - Automated provisioning of Claude Code development VMs on Proxmox VE
+  - OpenTofu/Terraform for VM provisioning
+  - Ansible for configuration management
+  - Pre-configured with Claude Code, MCP servers, and security hardening
 
 ## Self-Hosted Services
 
@@ -19,24 +26,6 @@ Personal development environment configuration including setup scripts, guides, 
 - [Plane](vms/services-vm/plane/) - Project management platform
 
 > **Note:** Replace all `{REPLACE_ME}` values in config files with your actual IP addresses or domains before deploying.
-
-## Setup Guides
-
-### macOS Setup
-
-See [setups/mac.md](setups/mac.md) for a complete macOS development environment setup including:
-
-- Homebrew package manager
-- AeroSpace window manager
-- Node.js via NVM
-- Development tools (Git, GitHub CLI, usql)
-- Package managers (PNPM, Bun)
-- Python tooling (uv)
-- Claude Code CLI
-
-## Usage
-
-Navigate to the relevant setup guide and follow the installation commands for your platform.
 
 ## License
 

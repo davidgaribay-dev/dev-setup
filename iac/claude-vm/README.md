@@ -106,6 +106,31 @@ The VM is configured with Claude Code sandbox mode enabled by default. Sandbox m
 
 For more information, see the [Claude Code Sandboxing Documentation](https://code.claude.com/docs/en/sandboxing).
 
+### MCP Servers
+
+The VM is pre-configured with the following MCP (Model Context Protocol) servers available globally (user scope):
+
+| Server | Command | Description |
+|--------|---------|-------------|
+| **Context7** | `npx -y @upstash/context7-mcp` | Provides up-to-date documentation for libraries and frameworks |
+| **Playwright** | `npx -y @playwright/mcp@latest` | Browser automation for web testing and interaction |
+
+**Verifying MCP Servers:**
+```sh
+claude mcp list
+```
+
+**Adding Additional MCP Servers:**
+```sh
+# Add globally (available in all projects)
+claude mcp add <name> --scope user -- npx -y <package>
+
+# Add for current project only
+claude mcp add <name> -- npx -y <package>
+```
+
+For more information, see the [Claude Code MCP Documentation](https://code.claude.com/docs/en/mcp).
+
 ## Usage
 
 ```sh
