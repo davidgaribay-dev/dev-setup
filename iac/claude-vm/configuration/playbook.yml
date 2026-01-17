@@ -1,0 +1,306 @@
+---
+- name: Harden and configure Claude development VMs
+  hosts: all
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    - name: Wait for cloud-init to complete
+      ansible.builtin.command: cloud-init status --wait
+      changed_when: false
+      timeout: 300
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Upgrade all packages
+      ansible.builtin.apt:
+        upgrade: dist
+        autoremove: true
+
+    - name: Install Python packages for Ansible modules
+      ansible.builtin.apt:
+        name:
+          - python3-apt
+          - python3-pip
+        state: present
+
+  roles:
+    # OS-level hardening (file permissions, kernel params, etc.)
+    - role: devsec.hardening.os_hardening
+
+    # SSH hardening (secure config, key-based auth, etc.)
+    - role: devsec.hardening.ssh_hardening
+
+    # Docker installation
+    - role: geerlingguy.docker
+
+  tasks:
+    - name: Install development packages
+      ansible.builtin.apt:
+        name: "{{ dev_packages }}"
+        state: present
+
+    - name: Install UFW
+      ansible.builtin.apt:
+        name: ufw
+        state: present
+
+    - name: Allow SSH through UFW
+      community.general.ufw:
+        rule: allow
+        name: OpenSSH
+
+    - name: Enable UFW with default deny
+      community.general.ufw:
+        state: enabled
+        policy: deny
+        direction: incoming
+
+    - name: Allow outgoing traffic
+      community.general.ufw:
+        state: enabled
+        policy: allow
+        direction: outgoing
+
+    - name: Install unattended-upgrades
+      ansible.builtin.apt:
+        name: unattended-upgrades
+        state: present
+
+    - name: Enable automatic security updates
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/20auto-upgrades
+        content: |
+          APT::Periodic::Update-Package-Lists "1";
+          APT::Periodic::Unattended-Upgrade "1";
+          APT::Periodic::AutocleanInterval "7";
+        mode: '0644'
+
+    - name: Install fail2ban
+      ansible.builtin.apt:
+        name: fail2ban
+        state: present
+
+    - name: Configure fail2ban for SSH
+      ansible.builtin.copy:
+        dest: /etc/fail2ban/jail.local
+        content: |
+          [sshd]
+          enabled = true
+          port = ssh
+          filter = sshd
+          logpath = /var/log/auth.log
+          maxretry = 5
+          bantime = 3600
+          findtime = 600
+        mode: '0644'
+      notify: Restart fail2ban
+
+    - name: Enable and start fail2ban
+      ansible.builtin.systemd:
+        name: fail2ban
+        enabled: true
+        state: started
+
+    - name: Ensure qemu-guest-agent is installed and running
+      ansible.builtin.apt:
+        name: qemu-guest-agent
+        state: present
+
+    - name: Enable and start qemu-guest-agent
+      ansible.builtin.systemd:
+        name: qemu-guest-agent
+        enabled: true
+        state: started
+
+    - name: Create keyrings directory
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Get architecture
+      ansible.builtin.command: dpkg --print-architecture
+      register: dpkg_arch
+      changed_when: false
+
+    - name: Download GitHub CLI GPG key
+      ansible.builtin.get_url:
+        url: https://cli.github.com/packages/githubcli-archive-keyring.gpg
+        dest: /etc/apt/keyrings/githubcli-archive-keyring.gpg
+        mode: '0644'
+
+    - name: Verify GitHub CLI GPG key fingerprint
+      ansible.builtin.shell: |
+        gpg --show-keys /etc/apt/keyrings/githubcli-archive-keyring.gpg 2>/dev/null | grep -q "2C61 0620 1985 B60E 6C7A  C873 23F3 D4EA 7571 6059"
+      register: gh_gpg_verify
+      failed_when: gh_gpg_verify.rc != 0
+      changed_when: false
+
+    - name: Add GitHub CLI repository
+      ansible.builtin.apt_repository:
+        repo: "deb [arch={{ dpkg_arch.stdout }} signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main"
+        state: present
+        filename: github-cli
+
+    - name: Install GitHub CLI
+      ansible.builtin.apt:
+        name: gh
+        state: present
+        update_cache: true
+
+  handlers:
+    - name: Restart fail2ban
+      ansible.builtin.systemd:
+        name: fail2ban
+        state: restarted
+
+
+- name: Setup development environment for user
+  hosts: all
+  become: true
+  become_user: "{{ dev_user }}"
+  gather_facts: false
+
+  tasks:
+    - name: Ensure .local/bin directory exists
+      ansible.builtin.file:
+        path: "{{ dev_user_home }}/.local/bin"
+        state: directory
+        mode: '0755'
+
+    - name: Add .local/bin to PATH in bashrc
+      ansible.builtin.lineinfile:
+        path: "{{ dev_user_home }}/.bashrc"
+        line: 'export PATH="$HOME/.local/bin:$PATH"'
+        state: present
+        create: true
+        mode: '0644'
+
+    - name: Configure git user email
+      community.general.git_config:
+        name: user.email
+        value: "{{ git_user_email }}"
+        scope: global
+
+    - name: Configure git user name
+      community.general.git_config:
+        name: user.name
+        value: "{{ git_user_name }}"
+        scope: global
+
+    - name: Install NVM
+      ansible.builtin.shell: curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/{{ nvm_version }}/install.sh | bash
+      args:
+        executable: /bin/bash
+        creates: "{{ dev_user_home }}/.nvm/nvm.sh"
+
+    - name: Install Node.js LTS via NVM
+      ansible.builtin.shell: |
+        source {{ dev_user_home }}/.nvm/nvm.sh
+        nvm install --lts
+      args:
+        executable: /bin/bash
+        creates: "{{ dev_user_home }}/.nvm/versions/node"
+
+    - name: Install pnpm globally
+      ansible.builtin.shell: |
+        source {{ dev_user_home }}/.nvm/nvm.sh
+        npm install -g pnpm
+      args:
+        executable: /bin/bash
+      register: pnpm_install
+      changed_when: "'added' in pnpm_install.stdout"
+
+    - name: Install UV
+      ansible.builtin.shell: curl -LsSf https://astral.sh/uv/install.sh | sh
+      args:
+        executable: /bin/bash
+        creates: "{{ dev_user_home }}/.local/bin/uv"
+
+    - name: Install Claude CLI
+      ansible.builtin.shell: curl -fsSL https://claude.ai/install.sh | bash
+      args:
+        executable: /bin/bash
+        creates: "{{ dev_user_home }}/.local/bin/claude"
+
+    - name: Download tea CLI
+      ansible.builtin.get_url:
+        url: https://dl.gitea.com/tea/{{ tea_version }}/tea-{{ tea_version }}-linux-amd64
+        dest: /tmp/tea
+        mode: '0755'
+      become: false
+      when: install_gitea_tea | default(false) | bool
+
+    - name: Download tea CLI checksums
+      ansible.builtin.get_url:
+        url: https://dl.gitea.com/tea/{{ tea_version }}/checksums.txt
+        dest: /tmp/tea-checksums.txt
+        mode: '0644'
+      become: false
+      when: install_gitea_tea | default(false) | bool
+
+    - name: Verify tea CLI checksum
+      ansible.builtin.shell: |
+        cd /tmp && grep "tea-{{ tea_version }}-linux-amd64$" tea-checksums.txt | sha256sum -c -
+      register: tea_checksum_verify
+      failed_when: tea_checksum_verify.rc != 0
+      changed_when: false
+      become: false
+      when: install_gitea_tea | default(false) | bool
+
+    - name: Install tea CLI
+      ansible.builtin.copy:
+        src: /tmp/tea
+        dest: /usr/local/bin/tea
+        mode: '0755'
+        remote_src: true
+      become: true
+      become_user: root
+      when: install_gitea_tea | default(false) | bool
+
+    - name: Add UV env sourcing to bashrc
+      ansible.builtin.lineinfile:
+        path: "{{ dev_user_home }}/.bashrc"
+        line: '[ -f "$HOME/.local/bin/env" ] && source "$HOME/.local/bin/env"'
+        state: present
+
+    - name: Configure GitHub CLI token from environment
+      ansible.builtin.lineinfile:
+        path: "{{ dev_user_home }}/.bashrc"
+        line: '[ -n "$GH_TOKEN" ] && export GH_TOKEN'
+        state: present
+      when: gh_token is defined and gh_token | length > 0
+
+    - name: Setup gh git credential helper
+      ansible.builtin.shell: |
+        gh auth setup-git
+      args:
+        executable: /bin/bash
+      environment:
+        GH_TOKEN: "{{ gh_token }}"
+      when: gh_token is defined and gh_token | length > 0
+      register: gh_setup_git
+      changed_when: gh_setup_git.rc == 0
+
+    - name: Create Claude Code config directory
+      ansible.builtin.file:
+        path: "{{ dev_user_home }}/.claude"
+        state: directory
+        mode: '0755'
+
+    - name: Configure Claude Code settings
+      ansible.builtin.copy:
+        src: files/claude-settings.json
+        dest: "{{ dev_user_home }}/.claude/settings.json"
+        mode: '0644'
+
+    - name: Skip Claude Code onboarding wizard
+      ansible.builtin.copy:
+        src: files/claude.json
+        dest: "{{ dev_user_home }}/.claude.json"
+        mode: '0644'
+        force: false

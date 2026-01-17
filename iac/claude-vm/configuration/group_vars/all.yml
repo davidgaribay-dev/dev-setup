@@ -1,0 +1,100 @@
+---
+# OS Hardening Configuration (devsec.hardening.os_hardening)
+
+# Sysctl settings - enable IP forwarding for Docker
+sysctl_overwrite:
+  net.ipv4.ip_forward: 1
+  net.ipv6.conf.all.forwarding: 1
+
+# Allow specific kernel modules needed for Docker/containers
+os_hardening_allowed_kernel_modules:
+  - overlay
+  - br_netfilter
+
+# Users allowed to use cron
+os_hardening_allowed_cron_users:
+  - root
+  - dmg
+
+# Don't disable kernel module loading (needed for Docker)
+os_security_kernel_module_loading: true
+
+# Password policy - relaxed for dev environment
+os_auth_pw_max_age: 99999
+os_auth_pw_min_age: 0
+
+# SSH Hardening Configuration (devsec.hardening.ssh_hardening)
+
+# SSH authentication
+ssh_permit_root_login: "no"
+ssh_allow_users: "dmg"
+ssh_allow_agent_forwarding: true
+ssh_allow_tcp_forwarding: true
+
+# Key-based auth only
+ssh_password_authentication: false
+ssh_challenge_response_auth: false
+
+# Modern crypto settings
+ssh_kex_algorithms:
+  - curve25519-sha256@libssh.org
+  - diffie-hellman-group-exchange-sha256
+
+ssh_ciphers:
+  - chacha20-poly1305@openssh.com
+  - aes256-gcm@openssh.com
+  - aes128-gcm@openssh.com
+
+ssh_macs:
+  - hmac-sha2-512-etm@openssh.com
+  - hmac-sha2-256-etm@openssh.com
+
+# Client alive settings
+ssh_client_alive_interval: 300
+ssh_client_alive_count_max: 3
+
+# Development Environment Settings
+
+# User for development
+dev_user: dmg
+dev_user_home: "/home/{{ dev_user }}"
+
+# Git configuration
+git_user_email: "me@davidgaribay.dev"
+git_user_name: "David Garibay"
+
+# GitHub CLI token (optional - set via environment variable for security)
+# export ANSIBLE_GH_TOKEN="ghp_xxxx" then pass with -e "gh_token=$ANSIBLE_GH_TOKEN"
+gh_token: ""
+
+# NVM version
+nvm_version: "v0.40.3"
+
+# tea CLI version (Gitea CLI) - optional, disabled by default
+# Enable with: -e "install_gitea_tea=true"
+install_gitea_tea: false
+tea_version: "0.11.1"
+
+# Packages to install
+dev_packages:
+  - git
+  - curl
+  - wget
+  - vim
+  - htop
+  - tmux
+  - jq
+  - unzip
+  - ca-certificates
+  - gnupg
+  - lsb-release
+  - apt-transport-https
+  - software-properties-common
+  - build-essential
+
+# Docker configuration (geerlingguy.docker role)
+docker_users:
+  - "{{ dev_user }}"
+docker_install_compose_plugin: true
+docker_compose_package: docker-compose-plugin
+docker_compose_package_state: present
