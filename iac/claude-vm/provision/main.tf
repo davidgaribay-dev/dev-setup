@@ -9,7 +9,6 @@ resource "proxmox_virtual_environment_vm" "vm" {
   node_name   = var.proxmox_node
   description = "Cloned from template ${var.template_id} via OpenTofu"
   vm_id       = each.value.vm_id
-  tags        = ["claude-dev", "managed-by-opentofu"]
 
   clone {
     vm_id        = var.template_id
@@ -17,8 +16,6 @@ resource "proxmox_virtual_environment_vm" "vm" {
     datastore_id = var.datastore_id
     retries      = 3
   }
-
-  scsi_hardware = "virtio-scsi-single"
 
   cpu {
     cores   = coalesce(each.value.cpu_cores, var.cpu_cores)
@@ -29,18 +26,6 @@ resource "proxmox_virtual_environment_vm" "vm" {
   memory {
     dedicated = coalesce(each.value.memory, var.memory)
   }
-
-  disk {
-    datastore_id = var.datastore_id
-    interface    = "scsi0"
-    size         = coalesce(each.value.disk_size, var.disk_size)
-    iothread     = true
-    ssd          = var.ssd_emulation
-    discard      = var.ssd_emulation ? "on" : "ignore"
-    file_format  = "raw"
-  }
-
-  serial_device {}
 
   initialization {
     datastore_id = var.datastore_id
@@ -62,9 +47,7 @@ resource "proxmox_virtual_environment_vm" "vm" {
   }
 
   network_device {
-    bridge  = var.network_bridge
-    vlan_id = try(coalesce(each.value.vlan_id, var.vlan_id), null)
-    model   = "virtio"
+    bridge = var.network_bridge
   }
 
   agent {

@@ -115,8 +115,13 @@ def run_command(
     cwd: Path | None = None,
     check: bool = True,
     capture_output: bool = False,
+    env: dict | None = None,
 ) -> subprocess.CompletedProcess:
     """Run a command with proper error handling."""
+    import os
+    run_env = os.environ.copy()
+    if env:
+        run_env.update(env)
     try:
         return subprocess.run(
             cmd,
@@ -124,6 +129,7 @@ def run_command(
             check=check,
             capture_output=capture_output,
             text=True,
+            env=run_env,
         )
     except subprocess.CalledProcessError as e:
         if capture_output:
@@ -138,9 +144,11 @@ def run_command(
 class OpenTofu:
     """Manages OpenTofu/Terraform operations."""
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, verbose: bool = False):
         self.config = config
         self.provision_dir = config.provision_dir
+        self.verbose = verbose
+        self.tf_env = {"TF_LOG": "INFO"} if verbose else {}
 
     def init(self) -> None:
         """Initialize OpenTofu."""
@@ -159,11 +167,16 @@ class OpenTofu:
     def apply(self, vms_var: dict) -> None:
         """Apply the planned changes."""
         log.info("Applying infrastructure changes (parallelism=1 for Proxmox stability)...")
+        log.info("This may take several minutes - cloning VM disks is slow...")
+        for vm_name, vm_config in vms_var.items():
+            log.info(f"  Will create: {vm_name} (VM ID: {vm_config['vm_id']})")
         vms_json = json.dumps(vms_var)
         run_command(
             ["tofu", "apply", "-parallelism=1", f"-var=vms={vms_json}", "tfplan"],
             cwd=self.provision_dir,
+            env=self.tf_env,
         )
+        log.success("Infrastructure apply completed")
         # Clean up plan file
         plan_file = self.provision_dir / "tfplan"
         if plan_file.exists():
@@ -285,6 +298,11 @@ class Ansible:
             ["ansible-galaxy", "collection", "install", "-r", "requirements.yml", "--force"],
             cwd=self.config_dir,
         )
+        log.info("Installing Ansible roles...")
+        run_command(
+            ["ansible-galaxy", "role", "install", "-r", "requirements.yml", "--force"],
+            cwd=self.config_dir,
+        )
 
     def run_playbook(self, skip_hardening: bool = False) -> None:
         """Run the Ansible playbook."""
@@ -353,6 +371,11 @@ Examples:
         action="store_true",
         help="Destroy all VMs",
     )
+    parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Enable verbose OpenTofu logging (TF_LOG=INFO)",
+    )
 
     args = parser.parse_args()
 
@@ -384,7 +407,7 @@ def main() -> None:
     check_dependencies()
 
     config = Config()
-    tofu = OpenTofu(config)
+    tofu = OpenTofu(config, verbose=args.verbose)
     ansible = Ansible(config)
     ssh_waiter = SSHWaiter(config)
 

@@ -32,23 +32,9 @@ variable "vms" {
     vm_id      = optional(number)
     cpu_cores  = optional(number)
     memory     = optional(number)
-    disk_size  = optional(number)
     ip_address = optional(string)
-    vlan_id    = optional(number)
   }))
   default = {}
-}
-
-variable "vm_id_start" {
-  description = "Starting VM ID when auto-generating VMs"
-  type        = number
-  default     = 200
-}
-
-variable "vm_name_prefix" {
-  description = "Prefix for auto-generated VM names"
-  type        = string
-  default     = "claude-dev"
 }
 
 variable "cpu_cores" {
@@ -63,28 +49,10 @@ variable "memory" {
   default     = 2048
 }
 
-variable "disk_size" {
-  description = "Default disk size in GB"
-  type        = number
-  default     = 32
-}
-
-variable "ssd_emulation" {
-  description = "Enable SSD emulation (enables TRIM/discard)"
-  type        = bool
-  default     = true
-}
-
 variable "network_bridge" {
   description = "Proxmox network bridge to attach VMs to"
   type        = string
   default     = "vmbr1"
-}
-
-variable "vlan_id" {
-  description = "Default VLAN ID (null for no VLAN tagging)"
-  type        = number
-  default     = null
 }
 
 variable "ip_address" {
@@ -110,4 +78,5 @@ variable "cloud_init_user" {
   type        = string
   default     = "dmg"
 }
+
 

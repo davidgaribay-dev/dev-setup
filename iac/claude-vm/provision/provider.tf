@@ -1,6 +1,6 @@
 provider "proxmox" {
   endpoint = var.proxmox_endpoint
-  insecure = false # SECURITY: Enable TLS certificate verification
+  insecure = true # Allow self-signed certificate on Proxmox server
 
   api_token = var.proxmox_api_token
 

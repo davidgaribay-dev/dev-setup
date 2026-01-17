@@ -8,6 +8,9 @@
     - name: Wait for cloud-init to complete
       ansible.builtin.command: cloud-init status --wait
       changed_when: false
+      # cloud-init returns 0 for running/not-started, 2 for done/recoverable error
+      failed_when: cloud_init_result.rc not in [0, 2]
+      register: cloud_init_result
       timeout: 300
 
     - name: Update apt cache
@@ -26,6 +29,17 @@
           - python3-apt
           - python3-pip
         state: present
+
+    - name: Install rsyslog (creates syslog group for hardening)
+      ansible.builtin.apt:
+        name: rsyslog
+        state: present
+
+    - name: Ensure /run/sshd exists (required for ssh_hardening on Ubuntu 24.04)
+      ansible.builtin.file:
+        path: /run/sshd
+        state: directory
+        mode: '0755'
 
   roles:
     # OS-level hardening (file permissions, kernel params, etc.)
@@ -135,7 +149,7 @@
 
     - name: Verify GitHub CLI GPG key fingerprint
       ansible.builtin.shell: |
-        gpg --show-keys /etc/apt/keyrings/githubcli-archive-keyring.gpg 2>/dev/null | grep -q "2C61 0620 1985 B60E 6C7A  C873 23F3 D4EA 7571 6059"
+        gpg --show-keys --with-fingerprint /etc/apt/keyrings/githubcli-archive-keyring.gpg 2>/dev/null | tr -d ' ' | grep -qi "2C6106201985B60E6C7AC87323F3D4EA75716059"
       register: gh_gpg_verify
       failed_when: gh_gpg_verify.rc != 0
       changed_when: false
