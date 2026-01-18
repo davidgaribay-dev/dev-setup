@@ -377,6 +377,18 @@
         state: directory
         mode: '0755'
 
+    - name: Create Claude Code hooks directory
+      ansible.builtin.file:
+        path: "{{ dev_user_home }}/.claude/hooks"
+        state: directory
+        mode: '0755'
+
+    - name: Deploy Claude Code single command enforcer hook
+      ansible.builtin.copy:
+        src: files/hooks/single_command_enforcer.py
+        dest: "{{ dev_user_home }}/.claude/hooks/single_command_enforcer.py"
+        mode: '0755'
+
     - name: Configure Claude Code settings
       ansible.builtin.copy:
         src: files/claude-settings.json

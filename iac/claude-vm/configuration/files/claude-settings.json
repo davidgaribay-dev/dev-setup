@@ -15,6 +15,12 @@
     "enableWeakerNestedSandbox": false
   },
   "permissions": {
+    "disableBypassPermissionsMode": "disable",
+    "allow": [
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__query-docs",
+      "mcp__playwright__browser_navigate"
+    ],
     "deny": [
       "Read(.env)",
       "Read(.env.*)",
@@ -25,10 +31,32 @@
       "Read(~/.config/gh/**)",
       "Read(~/.netrc)",
       "Read(~/.gitconfig)",
-      "Bash(curl:*)",
-      "Bash(wget:*)"
+      "Bash(curl)",
+      "Bash(wget)",
+      "Bash(nc)",
+      "Bash(telnet)",
+      "Bash(sudo)",
+      "Bash(su)",
+      "Bash(rm -rf /)",
+      "Bash(rm -rf ~)",
+      "Bash(chmod 777)",
+      "Bash(eval)",
+      "Bash(exec)"
     ],
     "defaultMode": "acceptEdits"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/single_command_enforcer.py"
+          }
+        ]
+      }
+    ]
   },
   "cleanupPeriodDays": 14,
   "respectGitignore": true,
