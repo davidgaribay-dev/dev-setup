@@ -50,6 +50,7 @@ class AnsibleManager:
     def run_playbook(
         self,
         playbook: str = "playbook.yml",
+        inventory: str | None = None,
         extra_vars: dict[str, str] | None = None,
         skip_tags: list[str] | None = None,
         tags: list[str] | None = None,
@@ -60,6 +61,7 @@ class AnsibleManager:
 
         Args:
             playbook: Name of the playbook file.
+            inventory: Inventory file path (relative to config_dir). Auto-detected if None.
             extra_vars: Extra variables to pass with -e.
             skip_tags: Tags to skip.
             tags: Tags to run (only these tags will be executed).
@@ -69,6 +71,17 @@ class AnsibleManager:
         log.info(f"Running Ansible playbook: {playbook}")
 
         cmd = ["ansible-playbook", playbook]
+
+        # Auto-detect inventory file if not specified
+        if inventory is None:
+            for inv_path in ["inventory/hosts.json", "inventory/hosts.yml", "inventory/hosts"]:
+                if (self.config_dir / inv_path).exists():
+                    inventory = inv_path
+                    break
+
+        # Add inventory file
+        if inventory:
+            cmd.extend(["-i", inventory])
 
         # Add verbosity
         if verbosity > 0:

@@ -14,6 +14,11 @@ crash.*.log
 # Ansible
 *.retry
 
+# Certificates (may contain sensitive CA certs)
+*.crt
+*.pem
+*.key
+
 # Generated inventory
 **/inventory/hosts.json
 

@@ -445,10 +445,12 @@ TLS verification is enabled by default. For self-signed certificates:
 
 - **OpenTofu Provider**: `bpg/proxmox = 0.93.0`
 - **Ansible Collections**:
-  - `devsec.hardening = 9.6.0`
+  - `devsec.hardening = 10.4.0`
   - `community.general = 10.2.0`
   - `ansible.posix = 2.0.0`
+- **Ansible Roles**:
   - `geerlingguy.docker = 7.4.1`
+- **Go**: Installed directly from `go.dev/dl/` (version defined in `group_vars/all.yml`)
 
 ### Claude Code Sandbox
 

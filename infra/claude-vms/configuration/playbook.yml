@@ -45,12 +45,13 @@
 
     # Ensure OpenSSH is updated before hardening (fixes socket-activation issues)
     # Minimum recommended version: 1:9.6p1-3ubuntu13.8
-    - name: Ensure OpenSSH is installed
+    # See: https://github.com/dev-sec/ansible-collection-hardening/issues/854
+    - name: Update OpenSSH to latest version
       ansible.builtin.apt:
         name:
           - openssh-server
           - openssh-client
-        state: present
+        state: latest
 
     # Ubuntu 24.04 uses socket activation by default which conflicts with ssh_hardening
     # See: https://github.com/dev-sec/ansible-collection-hardening/issues/854
@@ -104,11 +105,41 @@
     # Docker installation
     - role: geerlingguy.docker
 
-    # Go installation (official tarball from go.dev)
-    - role: geerlingguy.go
+  post_tasks:
+    # Go installation (direct from go.dev/dl/, bypassing geerlingguy.go role's outdated checksums)
+    - name: Check if Go is installed
+      ansible.builtin.stat:
+        path: /usr/local/go/bin/go
+      register: go_binary
       tags: [go]
 
-  post_tasks:
+    - name: Download and install Go {{ go_version }}
+      when: not go_binary.stat.exists
+      tags: [go]
+      block:
+        - name: Download Go tarball from go.dev/dl/
+          ansible.builtin.get_url:
+            url: "https://go.dev/dl/go{{ go_version }}.linux-amd64.tar.gz"
+            dest: "/tmp/go{{ go_version }}.linux-amd64.tar.gz"
+            mode: '0644'
+
+        - name: Extract Go to /usr/local
+          ansible.builtin.unarchive:
+            src: "/tmp/go{{ go_version }}.linux-amd64.tar.gz"
+            dest: /usr/local
+            remote_src: true
+
+        - name: Remove Go tarball
+          ansible.builtin.file:
+            path: "/tmp/go{{ go_version }}.linux-amd64.tar.gz"
+            state: absent
+
+    - name: Add Go to system PATH
+      ansible.builtin.copy:
+        content: 'export PATH=$PATH:/usr/local/go/bin'
+        dest: /etc/profile.d/go.sh
+        mode: '0644'
+      tags: [go]
     - name: Flush handlers after roles
       ansible.builtin.meta: flush_handlers
 
@@ -129,6 +160,18 @@
       ansible.builtin.apt:
         name: "{{ dev_packages }}"
         state: present
+
+    # Install Plane's Caddy root CA certificate for HTTPS trust
+    - name: Copy Caddy root CA certificate
+      ansible.builtin.copy:
+        src: files/caddy-root-ca.crt
+        dest: /usr/local/share/ca-certificates/caddy-root-ca.crt
+        mode: '0644'
+
+    - name: Update CA certificates trust store
+      ansible.builtin.command: update-ca-certificates
+      register: update_ca_result
+      changed_when: "'1 added' in update_ca_result.stdout"
 
     - name: Install UFW
       ansible.builtin.apt:
@@ -503,16 +546,19 @@
       ansible.builtin.debug:
         msg: "Neo4j MCP configured to connect to: {{ neo4j_uri }}"
 
-    - name: Add Plane MCP server
+    - name: Add Plane MCP server (official stdio transport)
       ansible.builtin.shell: |
         export PATH="{{ dev_user_home }}/.local/bin:$PATH"
         source {{ dev_user_home }}/.nvm/nvm.sh
-        claude mcp add plane --scope user -- npx -y mcp-remote@latest {{ plane_api_url }}/api/v1/mcp
+        claude mcp add plane --scope user \
+          -e PLANE_API_KEY="{{ plane_api_key }}" \
+          -e PLANE_WORKSPACE_SLUG="{{ plane_workspace_slug }}" \
+          -e PLANE_BASE_URL="{{ plane_api_url }}" \
+          -e SSL_CERT_FILE="/etc/ssl/certs/ca-certificates.crt" \
+          -e REQUESTS_CA_BUNDLE="/etc/ssl/certs/ca-certificates.crt" \
+          -- uvx plane-mcp-server stdio
       args:
         executable: /bin/bash
-      environment:
-        PLANE_API_KEY: "{{ plane_api_key }}"
-        PLANE_WORKSPACE_SLUG: "{{ plane_workspace_slug }}"
       register: plane_mcp_result
       changed_when: plane_mcp_result.rc == 0
       failed_when: false
@@ -525,7 +571,7 @@
 
     - name: Display Plane connection info
       ansible.builtin.debug:
-        msg: "Plane MCP configured to connect to: {{ plane_api_url }}"
+        msg: "Plane MCP configured with official plane-mcp-server to connect to: {{ plane_api_url }}"
       when: plane_api_key | length > 0 and plane_workspace_slug | length > 0
 
     - name: Plane MCP skipped notice
@@ -628,7 +674,7 @@
     - role: devsec.hardening.ssh_hardening
 
   post_tasks:
-    # Debug: Test sshd config and show error if invalid
+    # Test sshd config before attempting reload
     - name: Test sshd configuration validity
       ansible.builtin.command: sshd -t
       register: sshd_test
@@ -650,3 +696,16 @@
       ansible.builtin.debug:
         msg: "{{ sshd_config_content.stdout_lines }}"
       when: sshd_test.rc != 0 and sshd_config_content is defined
+
+    # Manually reload SSH since we disabled ssh_server_enabled to skip the role's handler
+    # Use reload (not restart) - safer as it only re-reads config without stopping the daemon
+    - name: Reload SSH service to apply hardening config
+      ansible.builtin.systemd:
+        name: ssh
+        state: reloaded
+      when: sshd_test.rc == 0
+
+    - name: Fail if sshd config is invalid
+      ansible.builtin.fail:
+        msg: "sshd configuration is invalid - SSH NOT reloaded. Fix config and retry."
+      when: sshd_test.rc != 0

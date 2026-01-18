@@ -11,5 +11,3 @@ collections:
 roles:
   - name: geerlingguy.docker
     version: "7.4.1"
-  - name: geerlingguy.go
-    version: "1.5.0"

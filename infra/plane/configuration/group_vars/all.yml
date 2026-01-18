@@ -7,7 +7,9 @@ plane_user_home: "/home/{{ plane_user }}"
 
 # Network configuration
 plane_ip: "10.0.70.70"
-plane_allowed_subnet: "10.0.70.0/24"
+plane_allowed_subnets:
+  - "10.0.70.0/24"  # VM subnet
+  - "10.0.60.0/24"  # Mac/client subnet
 plane_http_port: 80
 plane_https_port: 443
 plane_internal_port: 3001
