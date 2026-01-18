@@ -1,4 +1,4 @@
-"""Plane deployment command."""
+"""Core Services deployment command."""
 
 from __future__ import annotations
 
@@ -9,17 +9,17 @@ import typer
 from harness.core.context import AppContext
 from harness.core.exitcodes import ExitCode
 from harness.core.runner import MissingDependencyError
-from harness.deployers import PlaneDeployer
+from harness.deployers import CoreServicesDeployer
 
 
-def plane(
+def core_services(
     ctx: typer.Context,
     destroy: Annotated[
         bool,
         typer.Option(
             "--destroy",
             "-d",
-            help="Destroy the Plane VM instead of deploying.",
+            help="Destroy the Core Services VM instead of deploying.",
         ),
     ] = False,
     skip_provision: Annotated[
@@ -37,11 +37,14 @@ def plane(
         ),
     ] = False,
 ) -> None:
-    """Deploy or destroy the Plane project management server.
+    """Deploy or destroy Core Services (Plane + Rewind).
 
-    Plane is a self-hosted project management platform. After deployment,
-    you'll need to complete the initial setup in your browser and generate
-    an API key for MCP integration with Claude VMs.
+    Core Services includes:
+    - Plane: Self-hosted project management platform
+    - Rewind: Conversation history viewer for Claude Code
+
+    After deployment, you'll need to complete initial setup for Plane
+    and generate an API key for MCP integration with Claude VMs.
 
     \b
     Environment Variables:
@@ -49,26 +52,28 @@ def plane(
         PLANE_LIVE_SECRET_KEY     Live server key (generate with: openssl rand -hex 16)
         PLANE_POSTGRES_PASSWORD   PostgreSQL password
         PLANE_RABBITMQ_PASSWORD   RabbitMQ password
+        NEO4J_IP                  Neo4j server IP (default: 10.0.70.60)
+        NEO4J_PASSWORD            Neo4j password for Rewind
 
     \b
     Examples:
-        # Deploy Plane with default settings
-        $ harness plane
+        # Deploy Core Services with default settings
+        $ harness core-services
 
-        # Destroy the Plane VM
-        $ harness plane --destroy
+        # Destroy the Core Services VM
+        $ harness core-services --destroy
 
         # Only run Ansible configuration (skip provisioning)
-        $ harness plane --skip-provision
+        $ harness core-services --skip-provision
 
         # Only provision infrastructure (skip Ansible)
-        $ harness plane --skip-configure
+        $ harness core-services --skip-configure
     """
     app_ctx: AppContext = ctx.obj
     log = app_ctx.logger
 
     try:
-        deployer = PlaneDeployer(app_ctx.config, verbose=app_ctx.verbose)
+        deployer = CoreServicesDeployer(app_ctx.config, verbose=app_ctx.verbose)
 
         if destroy:
             result = deployer.destroy()
@@ -82,7 +87,7 @@ def plane(
             log.set_result({
                 "success": result.success,
                 "message": result.message,
-                "component": "plane",
+                "component": "core-services",
                 "action": "destroy" if destroy else "deploy",
             })
             log.flush_json()

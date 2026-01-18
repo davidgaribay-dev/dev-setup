@@ -2,7 +2,8 @@
   "model": "sonnet",
   "includeCoAuthoredBy": false,
   "env": {
-    "CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR": "1"
+    "CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR": "1",
+    "REWIND_API_URL": "{{ rewind_api_url }}"
   },
   "sandbox": {
     "enabled": true,
@@ -59,22 +60,11 @@
   "enabledPlugins": {
     "worktree@dg-marketplace": true,
     "git-workflow@dg-marketplace": true,
+    "rewind@dg-marketplace": true,
+    "single-command-enforcer@dg-marketplace": true,
     "gopls-lsp@claude-plugins-official": true,
     "pyright-lsp@claude-plugins-official": true,
     "typescript-lsp@claude-plugins-official": true
-  },
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 ~/.claude/hooks/single_command_enforcer.py"
-          }
-        ]
-      }
-    ]
   },
   "cleanupPeriodDays": 14,
   "respectGitignore": true,

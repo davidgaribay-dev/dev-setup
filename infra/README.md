@@ -81,6 +81,12 @@ pipx install --include-deps ansible
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
+#### rsync (for deploying Rewind)
+
+```bash
+sudo apt install rsync
+```
+
 ## Environment Variables
 
 ### Required Variables

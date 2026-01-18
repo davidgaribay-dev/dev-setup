@@ -27,15 +27,15 @@ variable "datastore_id" {
 }
 
 variable "vm_id" {
-  description = "VM ID for the Plane server"
+  description = "VM ID for the Core Services server"
   type        = number
   default     = 160
 }
 
 variable "vm_name" {
-  description = "Name of the Plane VM"
+  description = "Name of the Core Services VM"
   type        = string
-  default     = "plane-server"
+  default     = "core-services"
 }
 
 variable "cpu_cores" {

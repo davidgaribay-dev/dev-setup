@@ -7,7 +7,7 @@ from typing import Annotated, Optional
 import typer
 
 from harness import __version__
-from harness.cli.commands import all_cmd, neo4j, plane, status, vms
+from harness.cli.commands import all_cmd, core_services, neo4j, status, vms
 from harness.core.context import AppContext
 from harness.core.exitcodes import ExitCode
 
@@ -60,12 +60,12 @@ def main(
 ) -> None:
     """Claude Code Harness - Infrastructure orchestration CLI.
 
-    Manages Neo4j database servers and Claude development VMs
-    on Proxmox using OpenTofu and Ansible.
+    Manages Neo4j database servers, Core Services (Plane + Rewind),
+    and Claude development VMs on Proxmox using OpenTofu and Ansible.
 
     \b
     Quick Start:
-        $ harness all -c 2       # Deploy Neo4j + 2 Claude VMs
+        $ harness all -c 2       # Deploy Neo4j + Core Services + 2 Claude VMs
         $ harness status         # Check what's deployed
         $ harness vms --destroy  # Tear down Claude VMs only
 
@@ -87,7 +87,7 @@ def main(
 
 # Register commands directly (preserves docstrings for help text)
 app.command("neo4j")(neo4j)
-app.command("plane")(plane)
+app.command("core-services")(core_services)
 app.command("vms")(vms)
 app.command("all")(all_cmd)
 app.command("status")(status)

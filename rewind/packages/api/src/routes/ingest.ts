@@ -36,8 +36,8 @@ async function ingestMessage(
   // Create message node
   await tx.run(
     `
-    MATCH (c:Conversation {sessionId: $conversationId})
-    MERGE (m:Message {uuid: $uuid})
+    MATCH (c:Rewind_Conversation {sessionId: $conversationId})
+    MERGE (m:Rewind_Message {uuid: $uuid})
     ON CREATE SET m.type = $type,
                   m.timestamp = $timestamp,
                   m.parentUuid = $parentUuid,
@@ -94,8 +94,8 @@ async function ingestMessage(
       const block = content[i] as Record<string, unknown>;
       await tx.run(
         `
-        MATCH (m:Message {uuid: $messageUuid})
-        MERGE (m)-[:HAS_BLOCK]->(b:ContentBlock {messageUuid: $messageUuid, index: $index})
+        MATCH (m:Rewind_Message {uuid: $messageUuid})
+        MERGE (m)-[:HAS_BLOCK]->(b:Rewind_ContentBlock {messageUuid: $messageUuid, index: $index})
         ON CREATE SET b.type = $type,
                       b.data = $data
         `,
@@ -123,7 +123,7 @@ async function ensureProjectAndConversation(
   // Ensure project exists
   await tx.run(
     `
-    MERGE (p:Project {id: $projectId})
+    MERGE (p:Rewind_Project {id: $projectId})
     ON CREATE SET p.path = $projectPath,
                   p.name = $projectId,
                   p.displayName = $projectId,
@@ -135,8 +135,8 @@ async function ensureProjectAndConversation(
   // Ensure conversation exists
   await tx.run(
     `
-    MATCH (p:Project {id: $projectId})
-    MERGE (c:Conversation {sessionId: $conversationId})
+    MATCH (p:Rewind_Project {id: $projectId})
+    MERGE (c:Rewind_Conversation {sessionId: $conversationId})
     ON CREATE SET c.uuid = $uuid,
                   c.timestamp = datetime($timestamp),
                   c.createdAt = datetime()

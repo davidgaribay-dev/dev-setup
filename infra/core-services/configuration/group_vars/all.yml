@@ -1,22 +1,37 @@
 ---
-# Plane Configuration
+# Core Services Configuration
 
 # User configuration
-plane_user: dmg
-plane_user_home: "/home/{{ plane_user }}"
+core_services_user: dmg
+core_services_user_home: "/home/{{ core_services_user }}"
 
 # Network configuration
-plane_ip: "10.0.70.70"
-plane_allowed_subnets:
+core_services_ip: "10.0.70.70"
+core_services_allowed_subnets:
   - "10.0.70.0/24"  # VM subnet
   - "10.0.60.0/24"  # Mac/client subnet
-plane_http_port: 80
-plane_https_port: 443
-plane_internal_port: 3001
+core_services_http_port: 80
+core_services_https_port: 443
 
-# Plane Docker configuration
-plane_docker_dir: "{{ plane_user_home }}/plane"
+# Plane configuration
+plane_internal_port: 3001
+plane_docker_dir: "{{ core_services_user_home }}/plane"
 plane_app_release: "v1.2.1"
+
+# Rewind configuration
+# Internal ports (Docker containers bind to localhost on these)
+rewind_api_port: 8429
+rewind_web_port: 8430
+# External ports (Caddy listens on these with TLS)
+rewind_api_external_port: 8443
+rewind_web_external_port: 8444
+rewind_enabled: true
+rewind_docker_dir: "{{ core_services_user_home }}/rewind"
+
+# Neo4j connection (external VM)
+neo4j_ip: "{{ lookup('env', 'NEO4J_IP') | default('10.0.70.60', true) }}"
+neo4j_bolt_port: 7687
+neo4j_password: "{{ lookup('env', 'NEO4J_PASSWORD') | default('changeme', true) }}"
 
 # Sysctl settings - enable IP forwarding for Docker
 sysctl_overwrite:
@@ -25,7 +40,7 @@ sysctl_overwrite:
 
 # Docker configuration (geerlingguy.docker role)
 docker_users:
-  - "{{ plane_user }}"
+  - "{{ core_services_user }}"
 docker_install_compose_plugin: true
 docker_compose_package: docker-compose-plugin
 docker_compose_package_state: present
@@ -45,4 +60,4 @@ plane_minio_access_key: "{{ lookup('env', 'PLANE_MINIO_ACCESS_KEY') | default('a
 plane_minio_secret_key: "{{ lookup('env', 'PLANE_MINIO_SECRET_KEY') | default('secret-key', true) }}"
 
 # Caddy configuration
-caddy_email: "{{ lookup('env', 'CADDY_EMAIL') | default('admin@plane.local', true) }}"
+caddy_email: "{{ lookup('env', 'CADDY_EMAIL') | default('admin@core-services.local', true) }}"

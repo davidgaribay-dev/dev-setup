@@ -81,12 +81,14 @@ class Neo4jConfig:
 
 
 @dataclass
-class PlaneConfig:
-    """Plane-specific configuration."""
+class CoreServicesConfig:
+    """Core Services (Plane + Rewind) configuration."""
 
     ip: str
     http_port: int
     https_port: int
+    rewind_api_port: int
+    rewind_web_port: int
     vm_id: int
     vm_name: str
 
@@ -99,6 +101,16 @@ class PlaneConfig:
     def https_uri(self) -> str:
         """Get the HTTPS URI."""
         return f"https://{self.ip}"
+
+    @property
+    def rewind_api_uri(self) -> str:
+        """Get the Rewind API URI."""
+        return f"https://{self.ip}:{self.rewind_api_port}"
+
+    @property
+    def rewind_web_uri(self) -> str:
+        """Get the Rewind Web URI."""
+        return f"https://{self.ip}:{self.rewind_web_port}"
 
 
 @dataclass
@@ -167,7 +179,7 @@ class Config:
     """Main configuration container."""
 
     neo4j: Neo4jConfig
-    plane: PlaneConfig
+    core_services: CoreServicesConfig
     claude_vms: ClaudeVMsConfig
     network: NetworkConfig
     proxmox: ProxmoxConfig
@@ -188,7 +200,7 @@ class Config:
 
         return cls(
             neo4j=Neo4jConfig(**raw["neo4j"]),
-            plane=PlaneConfig(**raw["plane"]),
+            core_services=CoreServicesConfig(**raw["core_services"]),
             claude_vms=ClaudeVMsConfig(**raw["claude_vms"]),
             network=NetworkConfig(**raw["network"]),
             proxmox=ProxmoxConfig(**raw["proxmox"]),
@@ -212,9 +224,9 @@ class Config:
         return self.project_root / "neo4j"
 
     @property
-    def plane_dir(self) -> Path:
-        """Get Plane component directory."""
-        return self.project_root / "plane"
+    def core_services_dir(self) -> Path:
+        """Get Core Services component directory."""
+        return self.project_root / "core-services"
 
     @property
     def claude_vms_dir(self) -> Path:

@@ -57,39 +57,39 @@ export async function initializeSchema(): Promise<void> {
     // Without these, MERGE does a full label scan each time
     const constraints = [
       // Project uniqueness by ID
-      `CREATE CONSTRAINT project_id IF NOT EXISTS
-       FOR (p:Project) REQUIRE p.id IS UNIQUE`,
+      `CREATE CONSTRAINT rewind_project_id IF NOT EXISTS
+       FOR (p:Rewind_Project) REQUIRE p.id IS UNIQUE`,
 
       // Conversation uniqueness by sessionId
-      `CREATE CONSTRAINT conversation_session_id IF NOT EXISTS
-       FOR (c:Conversation) REQUIRE c.sessionId IS UNIQUE`,
+      `CREATE CONSTRAINT rewind_conversation_session_id IF NOT EXISTS
+       FOR (c:Rewind_Conversation) REQUIRE c.sessionId IS UNIQUE`,
 
       // Message uniqueness by UUID
-      `CREATE CONSTRAINT message_uuid IF NOT EXISTS
-       FOR (m:Message) REQUIRE m.uuid IS UNIQUE`,
+      `CREATE CONSTRAINT rewind_message_uuid IF NOT EXISTS
+       FOR (m:Rewind_Message) REQUIRE m.uuid IS UNIQUE`,
 
       // ContentBlock uniqueness by messageUuid + index (composite)
-      `CREATE CONSTRAINT content_block_unique IF NOT EXISTS
-       FOR (b:ContentBlock) REQUIRE (b.messageUuid, b.index) IS UNIQUE`,
+      `CREATE CONSTRAINT rewind_content_block_unique IF NOT EXISTS
+       FOR (b:Rewind_ContentBlock) REQUIRE (b.messageUuid, b.index) IS UNIQUE`,
     ];
 
     // Indexes for query performance
     const indexes = [
       // Message timestamp for ordering
-      `CREATE INDEX message_timestamp IF NOT EXISTS
-       FOR (m:Message) ON (m.timestamp)`,
+      `CREATE INDEX rewind_message_timestamp IF NOT EXISTS
+       FOR (m:Rewind_Message) ON (m.timestamp)`,
 
       // Message type for filtering
-      `CREATE INDEX message_type IF NOT EXISTS
-       FOR (m:Message) ON (m.type)`,
+      `CREATE INDEX rewind_message_type IF NOT EXISTS
+       FOR (m:Rewind_Message) ON (m.type)`,
 
       // Conversation timestamp for ordering
-      `CREATE INDEX conversation_timestamp IF NOT EXISTS
-       FOR (c:Conversation) ON (c.timestamp)`,
+      `CREATE INDEX rewind_conversation_timestamp IF NOT EXISTS
+       FOR (c:Rewind_Conversation) ON (c.timestamp)`,
 
       // Project path for lookups
-      `CREATE INDEX project_path IF NOT EXISTS
-       FOR (p:Project) ON (p.path)`,
+      `CREATE INDEX rewind_project_path IF NOT EXISTS
+       FOR (p:Rewind_Project) ON (p.path)`,
     ];
 
     // Execute all constraint and index creations

@@ -22,10 +22,10 @@ export async function getProjects(): Promise<Project[]> {
   try {
     const result = await session.executeRead(async (tx) => {
       return tx.run(`
-        MATCH (p:Project)
-        OPTIONAL MATCH (p)-[:HAS_CONVERSATION]->(c:Conversation)
+        MATCH (p:Rewind_Project)
+        OPTIONAL MATCH (p)-[:HAS_CONVERSATION]->(c:Rewind_Conversation)
         WITH p, count(c) as convCount, max(c.timestamp) as lastMod
-        OPTIONAL MATCH (p)-[:HAS_CONVERSATION]->(:Conversation)-[:CONTAINS]->(m:Message)
+        OPTIONAL MATCH (p)-[:HAS_CONVERSATION]->(:Rewind_Conversation)-[:CONTAINS]->(m:Rewind_Message)
         RETURN p.id as id,
                p.name as name,
                p.displayName as displayName,
@@ -57,10 +57,10 @@ export async function getProject(projectId: string): Promise<Project | null> {
     const result = await session.executeRead(async (tx) => {
       return tx.run(
         `
-        MATCH (p:Project {id: $projectId})
-        OPTIONAL MATCH (p)-[:HAS_CONVERSATION]->(c:Conversation)
+        MATCH (p:Rewind_Project {id: $projectId})
+        OPTIONAL MATCH (p)-[:HAS_CONVERSATION]->(c:Rewind_Conversation)
         WITH p, count(c) as convCount, max(c.timestamp) as lastMod
-        OPTIONAL MATCH (p)-[:HAS_CONVERSATION]->(:Conversation)-[:CONTAINS]->(m:Message)
+        OPTIONAL MATCH (p)-[:HAS_CONVERSATION]->(:Rewind_Conversation)-[:CONTAINS]->(m:Rewind_Message)
         RETURN p.id as id,
                p.name as name,
                p.displayName as displayName,
@@ -96,8 +96,8 @@ export async function getProjectConversations(projectId: string): Promise<Conver
     const result = await session.executeRead(async (tx) => {
       return tx.run(
         `
-        MATCH (p:Project {id: $projectId})-[:HAS_CONVERSATION]->(c:Conversation)
-        OPTIONAL MATCH (c)-[:CONTAINS]->(m:Message)
+        MATCH (p:Rewind_Project {id: $projectId})-[:HAS_CONVERSATION]->(c:Rewind_Conversation)
+        OPTIONAL MATCH (c)-[:CONTAINS]->(m:Rewind_Message)
         WITH c, count(m) as msgCount,
              collect(m)[0] as firstMsg,
              sum(COALESCE(m.inputTokens, 0)) as inputTokens,
@@ -142,7 +142,7 @@ export async function getConversation(conversationId: string): Promise<Conversat
     const convResult = await session.executeRead(async (tx) => {
       return tx.run(
         `
-        MATCH (c:Conversation {sessionId: $conversationId})
+        MATCH (c:Rewind_Conversation {sessionId: $conversationId})
         RETURN c.sessionId as sessionId,
                c.uuid as uuid,
                c.timestamp as timestamp
@@ -159,8 +159,8 @@ export async function getConversation(conversationId: string): Promise<Conversat
     const msgResult = await session.executeRead(async (tx) => {
       return tx.run(
         `
-        MATCH (c:Conversation {sessionId: $conversationId})-[:CONTAINS]->(m:Message)
-        OPTIONAL MATCH (m)-[:HAS_BLOCK]->(b:ContentBlock)
+        MATCH (c:Rewind_Conversation {sessionId: $conversationId})-[:CONTAINS]->(m:Rewind_Message)
+        OPTIONAL MATCH (m)-[:HAS_BLOCK]->(b:Rewind_ContentBlock)
         WITH m, collect(b {.*}) as blocks
         ORDER BY m.timestamp ASC
         RETURN m {
@@ -286,8 +286,8 @@ export async function getRecentConversations(limit = 20): Promise<(Conversation 
     const result = await session.executeRead(async (tx) => {
       return tx.run(
         `
-        MATCH (p:Project)-[:HAS_CONVERSATION]->(c:Conversation)
-        OPTIONAL MATCH (c)-[:CONTAINS]->(m:Message)
+        MATCH (p:Rewind_Project)-[:HAS_CONVERSATION]->(c:Rewind_Conversation)
+        OPTIONAL MATCH (c)-[:CONTAINS]->(m:Rewind_Message)
         WITH p, c, count(m) as msgCount,
              collect(m)[0] as firstMsg,
              sum(COALESCE(m.inputTokens, 0)) as inputTokens,
@@ -336,7 +336,7 @@ export async function toggleConversationStar(sessionId: string): Promise<boolean
     const result = await session.executeWrite(async (tx) => {
       return tx.run(
         `
-        MATCH (c:Conversation {sessionId: $sessionId})
+        MATCH (c:Rewind_Conversation {sessionId: $sessionId})
         SET c.starred = NOT COALESCE(c.starred, false)
         RETURN c.starred as starred
       `,
@@ -362,7 +362,7 @@ export async function searchConversations(
   try {
     const cypher = projectId
       ? `
-        MATCH (p:Project {id: $projectId})-[:HAS_CONVERSATION]->(c:Conversation)-[:CONTAINS]->(m:Message)
+        MATCH (p:Rewind_Project {id: $projectId})-[:HAS_CONVERSATION]->(c:Rewind_Conversation)-[:CONTAINS]->(m:Rewind_Message)
         WHERE m.preview CONTAINS $query OR m.messageData CONTAINS $query
         WITH DISTINCT c, max(m.timestamp) as lastMsg
         RETURN c.sessionId as sessionId,
@@ -372,7 +372,7 @@ export async function searchConversations(
         LIMIT 50
       `
       : `
-        MATCH (c:Conversation)-[:CONTAINS]->(m:Message)
+        MATCH (c:Rewind_Conversation)-[:CONTAINS]->(m:Rewind_Message)
         WHERE m.preview CONTAINS $query OR m.messageData CONTAINS $query
         WITH DISTINCT c, max(m.timestamp) as lastMsg
         RETURN c.sessionId as sessionId,
@@ -405,11 +405,11 @@ export async function getStats(): Promise<Stats> {
   try {
     const result = await session.executeRead(async (tx) => {
       return tx.run(`
-        MATCH (p:Project)
+        MATCH (p:Rewind_Project)
         WITH count(p) as projectCount
-        MATCH (c:Conversation)
+        MATCH (c:Rewind_Conversation)
         WITH projectCount, count(c) as convCount
-        MATCH (m:Message)
+        MATCH (m:Rewind_Message)
         WITH projectCount, convCount,
              count(m) as msgCount,
              sum(CASE WHEN m.type = 'user' THEN 1 ELSE 0 END) as userMsgs,

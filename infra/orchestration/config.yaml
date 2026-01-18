@@ -2,7 +2,7 @@
 # Shared settings for all deployment scripts
 
 neo4j:
-  ip: "10.0.70.50"
+  ip: "10.0.70.60"
   bolt_port: 7687
   http_port: 7474
   username: "neo4j"
@@ -10,13 +10,15 @@ neo4j:
   vm_name: "neo4j-db"
   # password from NEO4J_PASSWORD env var
 
-plane:
+core_services:
   ip: "10.0.70.70"
   http_port: 80
   https_port: 443
+  rewind_api_port: 8443  # External HTTPS port (Caddy)
+  rewind_web_port: 8444  # External HTTPS port (Caddy)
   vm_id: 160
-  vm_name: "plane-server"
-  # secrets from PLANE_* env vars
+  vm_name: "core-services"
+  # secrets from PLANE_* and NEO4J_* env vars
 
 claude_vms:
   start_id: 200

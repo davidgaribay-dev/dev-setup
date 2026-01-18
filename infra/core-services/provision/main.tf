@@ -1,7 +1,7 @@
-resource "proxmox_virtual_environment_vm" "plane" {
+resource "proxmox_virtual_environment_vm" "core_services" {
   name        = var.vm_name
   node_name   = var.proxmox_node
-  description = "Plane project management server - cloned from template ${var.template_id} via OpenTofu"
+  description = "Core Services server (Plane + Rewind) - cloned from template ${var.template_id} via OpenTofu"
   vm_id       = var.vm_id
 
   clone {

@@ -140,10 +140,17 @@ neo4j_uri: "bolt://{{ neo4j_ip }}:7687"
 neo4j_username: "neo4j"
 neo4j_password: "{{ lookup('env', 'NEO4J_PASSWORD') | default('changeme', true) }}"
 
+# Core Services Configuration (Plane + Rewind)
+# core_services_ip is passed from the orchestration script via -e flag
+core_services_ip: "{{ lookup('env', 'CORE_SERVICES_IP') | default('10.0.70.70', true) }}"
+core_services_ssh_user: "{{ lookup('env', 'CORE_SERVICES_SSH_USER') | default('dmg', true) }}"
+
 # Plane MCP Configuration
-# plane_ip is passed from the orchestration script via -e flag
-plane_ip: "{{ lookup('env', 'PLANE_IP') | default('10.0.70.70', true) }}"
 # HTTPS works because Caddy's root CA is installed in the VM's trust store
-plane_api_url: "https://{{ plane_ip }}"
+plane_api_url: "https://{{ core_services_ip }}"
 plane_workspace_slug: "{{ lookup('env', 'PLANE_WORKSPACE_SLUG') | default('', true) }}"
 plane_api_key: "{{ lookup('env', 'PLANE_API_KEY') | default('', true) }}"
+
+# Rewind Configuration
+rewind_api_port: 8443  # External HTTPS port (Caddy)
+rewind_api_url: "https://{{ core_services_ip }}:{{ rewind_api_port }}"

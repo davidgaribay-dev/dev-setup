@@ -1,0 +1,79 @@
+# Caddy Configuration for Core Services
+# Managed by Ansible - DO NOT EDIT MANUALLY
+
+# Plane (main service) - port 443
+{{ core_services_ip }} {
+    reverse_proxy localhost:{{ plane_internal_port }} {
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Forwarded-Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up Host {http.request.host}
+        header_up Upgrade {http.request.header.Upgrade}
+        header_up Connection {http.request.header.Connection}
+    }
+
+    request_body {
+        max_size 10MB
+    }
+
+    encode gzip zstd
+
+    log {
+        output file /var/log/caddy/plane.log
+        format json
+    }
+
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Frame-Options "SAMEORIGIN"
+        X-Content-Type-Options "nosniff"
+    }
+
+    # Use self-signed certificate for internal network
+    tls internal
+}
+
+{% if rewind_enabled | default(true) %}
+# Rewind API - external HTTPS port {{ rewind_api_external_port }} proxies to internal port {{ rewind_api_port }}
+{{ core_services_ip }}:{{ rewind_api_external_port }} {
+    reverse_proxy localhost:{{ rewind_api_port }}
+
+    encode gzip zstd
+
+    log {
+        output file /var/log/caddy/rewind-api.log
+        format json
+    }
+
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        Access-Control-Allow-Origin "*"
+        Access-Control-Allow-Methods "GET, POST, OPTIONS"
+        Access-Control-Allow-Headers "Content-Type, Authorization"
+    }
+
+    tls internal
+}
+
+# Rewind Web - external HTTPS port {{ rewind_web_external_port }} proxies to internal port {{ rewind_web_port }}
+{{ core_services_ip }}:{{ rewind_web_external_port }} {
+    reverse_proxy localhost:{{ rewind_web_port }}
+
+    encode gzip zstd
+
+    log {
+        output file /var/log/caddy/rewind-web.log
+        format json
+    }
+
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Frame-Options "SAMEORIGIN"
+        X-Content-Type-Options "nosniff"
+    }
+
+    tls internal
+}
+{% endif %}

@@ -1,6 +1,6 @@
 ---
 # Play 1: System preparation and Docker installation
-- name: Setup Plane project management server with Docker
+- name: Setup Core Services server with Docker
   hosts: all
   become: true
   gather_facts: true
@@ -33,6 +33,7 @@
           - software-properties-common
           - python3-pip
           - python3-apt
+          - rsync
         state: present
 
     - name: Configure sysctl for Docker networking
@@ -71,16 +72,16 @@
       ansible.builtin.file:
         path: "{{ plane_docker_dir }}"
         state: directory
-        owner: "{{ plane_user }}"
-        group: "{{ plane_user }}"
+        owner: "{{ core_services_user }}"
+        group: "{{ core_services_user }}"
         mode: '0755'
 
     - name: Deploy environment file
       ansible.builtin.template:
         src: files/plane.env.j2
         dest: "{{ plane_docker_dir }}/.env"
-        owner: "{{ plane_user }}"
-        group: "{{ plane_user }}"
+        owner: "{{ core_services_user }}"
+        group: "{{ core_services_user }}"
         mode: '0600'
       notify: Restart Plane containers
 
@@ -88,8 +89,8 @@
       ansible.builtin.template:
         src: files/docker-compose.yml.j2
         dest: "{{ plane_docker_dir }}/docker-compose.yml"
-        owner: "{{ plane_user }}"
-        group: "{{ plane_user }}"
+        owner: "{{ core_services_user }}"
+        group: "{{ core_services_user }}"
         mode: '0644'
       notify: Restart Plane containers
 
@@ -119,8 +120,73 @@
         chdir: "{{ plane_docker_dir }}"
 
 
-# Play 3: Install and configure Caddy reverse proxy
-- name: Configure Caddy reverse proxy
+# Play 3: Deploy Rewind with Docker Compose
+- name: Deploy Rewind with Docker Compose
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Create Rewind Docker directory
+      ansible.builtin.file:
+        path: "{{ rewind_docker_dir }}"
+        state: directory
+        owner: "{{ core_services_user }}"
+        group: "{{ core_services_user }}"
+        mode: '0755'
+
+    - name: Copy Rewind source files
+      ansible.builtin.synchronize:
+        src: "{{ playbook_dir }}/../../../rewind/"
+        dest: "{{ rewind_docker_dir }}/"
+        rsync_opts:
+          - "--exclude=node_modules"
+          - "--exclude=.git"
+          - "--exclude=dist"
+      notify: Rebuild Rewind containers
+
+    - name: Create Rewind .env file
+      ansible.builtin.template:
+        src: files/rewind.env.j2
+        dest: "{{ rewind_docker_dir }}/.env"
+        owner: "{{ core_services_user }}"
+        group: "{{ core_services_user }}"
+        mode: '0600'
+      notify: Restart Rewind containers
+
+    - name: Build Rewind Docker images
+      ansible.builtin.command:
+        cmd: docker compose -f docker-compose.prod.yml build
+        chdir: "{{ rewind_docker_dir }}"
+      register: build_result
+      changed_when: "'Successfully built' in build_result.stdout or 'exporting' in build_result.stdout"
+
+    - name: Start Rewind containers
+      ansible.builtin.command:
+        cmd: docker compose -f docker-compose.prod.yml up -d
+        chdir: "{{ rewind_docker_dir }}"
+      register: rewind_compose_result
+      changed_when: "'Started' in rewind_compose_result.stderr or 'Created' in rewind_compose_result.stderr"
+
+    - name: Display Rewind compose output
+      ansible.builtin.debug:
+        var: rewind_compose_result
+        verbosity: 1
+
+  handlers:
+    - name: Rebuild Rewind containers
+      ansible.builtin.command:
+        cmd: docker compose -f docker-compose.prod.yml up -d --build --force-recreate
+        chdir: "{{ rewind_docker_dir }}"
+
+    - name: Restart Rewind containers
+      ansible.builtin.command:
+        cmd: docker compose -f docker-compose.prod.yml up -d --force-recreate
+        chdir: "{{ rewind_docker_dir }}"
+
+
+# Play 4: Install and configure Caddy reverse proxy
+- name: Configure Caddy reverse proxy for Core Services
   hosts: all
   become: true
   gather_facts: false
@@ -193,7 +259,7 @@
         state: reloaded
 
 
-# Play 4: Configure firewall and health check
+# Play 5: Configure firewall and health check
 - name: Configure firewall and verify deployment
   hosts: all
   become: true
@@ -213,18 +279,36 @@
     - name: Allow HTTP from allowed subnets
       community.general.ufw:
         rule: allow
-        port: "{{ plane_http_port }}"
+        port: "{{ core_services_http_port }}"
         proto: tcp
         src: "{{ item }}"
-      loop: "{{ plane_allowed_subnets }}"
+      loop: "{{ core_services_allowed_subnets }}"
 
     - name: Allow HTTPS from allowed subnets
       community.general.ufw:
         rule: allow
-        port: "{{ plane_https_port }}"
+        port: "{{ core_services_https_port }}"
         proto: tcp
         src: "{{ item }}"
-      loop: "{{ plane_allowed_subnets }}"
+      loop: "{{ core_services_allowed_subnets }}"
+
+    - name: Allow Rewind API external port from allowed subnets
+      community.general.ufw:
+        rule: allow
+        port: "{{ rewind_api_external_port }}"
+        proto: tcp
+        src: "{{ item }}"
+      loop: "{{ core_services_allowed_subnets }}"
+      when: rewind_enabled | default(true)
+
+    - name: Allow Rewind Web external port from allowed subnets
+      community.general.ufw:
+        rule: allow
+        port: "{{ rewind_web_external_port }}"
+        proto: tcp
+        src: "{{ item }}"
+      loop: "{{ core_services_allowed_subnets }}"
+      when: rewind_enabled | default(true)
 
     - name: Enable UFW with default deny
       community.general.ufw:
@@ -256,15 +340,31 @@
       retries: 60
       delay: 10
 
-    - name: Display Plane connection info
+    - name: Wait for Rewind API to be ready
+      ansible.builtin.uri:
+        url: "http://localhost:{{ rewind_api_port }}/health"
+        status_code: [200]
+        validate_certs: false
+      register: rewind_status
+      until: rewind_status.status == 200
+      retries: 30
+      delay: 10
+      when: rewind_enabled | default(true)
+
+    - name: Display Core Services connection info
       ansible.builtin.debug:
         msg:
-          - "Plane is running and ready!"
-          - "HTTP URL: http://{{ plane_ip }}"
-          - "HTTPS URL: https://{{ plane_ip }}"
-          - "Internal proxy: localhost:{{ plane_internal_port }}"
+          - "Core Services are running and ready!"
+          - ""
+          - "Plane:"
+          - "  HTTPS URL: https://{{ core_services_ip }}"
+          - "  Internal proxy: localhost:{{ plane_internal_port }}"
+          - ""
+          - "Rewind:"
+          - "  API URL: https://{{ core_services_ip }}:{{ rewind_api_port }}"
+          - "  Web URL: https://{{ core_services_ip }}:{{ rewind_web_port }}"
           - ""
           - "Next steps:"
-          - "1. Visit https://{{ plane_ip }} in your browser"
-          - "2. Complete the initial setup and create an admin account"
-          - "3. Generate an API key for MCP integration"
+          - "1. Visit https://{{ core_services_ip }} in your browser to setup Plane"
+          - "2. Visit https://{{ core_services_ip }}:{{ rewind_web_port }} for Rewind"
+          - "3. Generate API keys for MCP integration"

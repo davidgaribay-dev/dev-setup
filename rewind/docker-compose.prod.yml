@@ -1,0 +1,39 @@
+# Production override for Rewind
+# Uses external Neo4j instead of local container
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: packages/api/Dockerfile
+    container_name: rewind-api
+    environment:
+      NEO4J_URI: ${NEO4J_URI}
+      NEO4J_USER: ${NEO4J_USER:-neo4j}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD}
+      PORT: 8429
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - "127.0.0.1:8429:8429"
+    networks:
+      - rewind-network
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: packages/web/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL}
+    container_name: rewind-web
+    ports:
+      - "127.0.0.1:8430:80"
+    depends_on:
+      - api
+    networks:
+      - rewind-network
+    restart: unless-stopped
+
+networks:
+  rewind-network:
+    driver: bridge

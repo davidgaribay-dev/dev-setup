@@ -161,17 +161,29 @@
         name: "{{ dev_packages }}"
         state: present
 
-    # Install Plane's Caddy root CA certificate for HTTPS trust
-    - name: Copy Caddy root CA certificate
+    # Install Core Services Caddy root CA certificate for HTTPS trust
+    # Dynamically fetch from core-services VM to ensure it's always current
+    - name: Fetch Caddy root CA certificate from core-services
+      ansible.builtin.shell: |
+        ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+          {{ core_services_ssh_user }}@{{ core_services_ip }} \
+          'sudo cat /var/lib/caddy/.local/share/caddy/pki/authorities/local/root.crt'
+      register: caddy_root_ca
+      delegate_to: localhost
+      become: false
+      changed_when: false
+
+    - name: Install Caddy root CA certificate
       ansible.builtin.copy:
-        src: files/caddy-root-ca.crt
+        content: "{{ caddy_root_ca.stdout }}"
         dest: /usr/local/share/ca-certificates/caddy-root-ca.crt
         mode: '0644'
+      register: caddy_cert_installed
 
     - name: Update CA certificates trust store
       ansible.builtin.command: update-ca-certificates
       register: update_ca_result
-      changed_when: "'1 added' in update_ca_result.stdout"
+      changed_when: "'1 added' in update_ca_result.stdout or caddy_cert_installed.changed"
 
     - name: Install UFW
       ansible.builtin.apt:
@@ -472,21 +484,12 @@
         state: directory
         mode: '0755'
 
-    - name: Create Claude Code hooks directory
-      ansible.builtin.file:
-        path: "{{ dev_user_home }}/.claude/hooks"
-        state: directory
-        mode: '0755'
-
-    - name: Deploy Claude Code single command enforcer hook
-      ansible.builtin.copy:
-        src: files/hooks/single_command_enforcer.py
-        dest: "{{ dev_user_home }}/.claude/hooks/single_command_enforcer.py"
-        mode: '0755'
+    # Note: Hooks are now managed via plugins (single-command-enforcer@dg-marketplace)
+    # configured in settings.json enabledPlugins
 
     - name: Configure Claude Code settings
-      ansible.builtin.copy:
-        src: files/claude-settings.json
+      ansible.builtin.template:
+        src: files/claude-settings.json.j2
         dest: "{{ dev_user_home }}/.claude/settings.json"
         mode: '0644'
 
@@ -578,6 +581,10 @@
       ansible.builtin.debug:
         msg: "Plane MCP skipped - PLANE_API_KEY and PLANE_WORKSPACE_SLUG not set. Configure after Plane setup."
       when: plane_api_key | length == 0 or plane_workspace_slug | length == 0
+
+    # Note: Rewind plugin and dg-marketplace are configured via settings.json
+    # (extraKnownMarketplaces and enabledPlugins arrays)
+    # Claude Code will auto-enable plugins when it starts
 
 
 # SSH hardening runs LAST to avoid connection issues blocking other tasks
@@ -698,12 +705,20 @@
       when: sshd_test.rc != 0 and sshd_config_content is defined
 
     # Manually reload SSH since we disabled ssh_server_enabled to skip the role's handler
-    # Use reload (not restart) - safer as it only re-reads config without stopping the daemon
+    # Try reload first, fall back to restart if reload fails (Ubuntu 24.04 quirk)
     - name: Reload SSH service to apply hardening config
       ansible.builtin.systemd:
         name: ssh
         state: reloaded
       when: sshd_test.rc == 0
+      register: ssh_reload_result
+      failed_when: false
+
+    - name: Restart SSH service if reload failed
+      ansible.builtin.systemd:
+        name: ssh
+        state: restarted
+      when: sshd_test.rc == 0 and ssh_reload_result is defined and ssh_reload_result.failed | default(false)
 
     - name: Fail if sshd config is invalid
       ansible.builtin.fail:
