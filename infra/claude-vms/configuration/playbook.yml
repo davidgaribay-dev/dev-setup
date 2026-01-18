@@ -104,6 +104,10 @@
     # Docker installation
     - role: geerlingguy.docker
 
+    # Go installation (official tarball from go.dev)
+    - role: geerlingguy.go
+      tags: [go]
+
   post_tasks:
     - name: Flush handlers after roles
       ansible.builtin.meta: flush_handlers
@@ -304,11 +308,47 @@
       register: pnpm_install
       changed_when: "'added' in pnpm_install.stdout"
 
+    - name: Install TypeScript language server (for typescript-lsp plugin)
+      ansible.builtin.shell: |
+        source {{ dev_user_home }}/.nvm/nvm.sh
+        npm install -g typescript typescript-language-server
+      args:
+        executable: /bin/bash
+      register: ts_lsp_install
+      changed_when: "'added' in ts_lsp_install.stdout"
+
     - name: Install UV
       ansible.builtin.shell: curl -LsSf https://astral.sh/uv/install.sh | sh
       args:
         executable: /bin/bash
         creates: "{{ dev_user_home }}/.local/bin/uv"
+
+    - name: Install Pyright language server (for pyright-lsp plugin)
+      ansible.builtin.shell: |
+        source {{ dev_user_home }}/.nvm/nvm.sh
+        npm install -g pyright
+      args:
+        executable: /bin/bash
+      register: pyright_install
+      changed_when: "'added' in pyright_install.stdout"
+
+    - name: Install gopls (Go language server for gopls-lsp plugin)
+      ansible.builtin.shell: |
+        export GOPATH="{{ dev_user_home }}/go"
+        export PATH="/usr/local/go/bin:$PATH:$GOPATH/bin"
+        go install golang.org/x/tools/gopls@latest
+      args:
+        executable: /bin/bash
+        creates: "{{ dev_user_home }}/go/bin/gopls"
+
+    - name: Add Go paths to bashrc
+      ansible.builtin.blockinfile:
+        path: "{{ dev_user_home }}/.bashrc"
+        marker: "# {mark} ANSIBLE MANAGED - Go paths"
+        block: |
+          export PATH="/usr/local/go/bin:$PATH"
+          export GOPATH="$HOME/go"
+          export PATH="$PATH:$GOPATH/bin"
 
     - name: Install Claude CLI
       ansible.builtin.shell: curl -fsSL https://claude.ai/install.sh | bash

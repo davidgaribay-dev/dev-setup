@@ -58,7 +58,10 @@
   },
   "enabledPlugins": {
     "worktree@dg-marketplace": true,
-    "git-workflow@dg-marketplace": true
+    "git-workflow@dg-marketplace": true,
+    "gopls-lsp@claude-plugins-official": true,
+    "pyright-lsp@claude-plugins-official": true,
+    "typescript-lsp@claude-plugins-official": true
   },
   "hooks": {
     "PreToolUse": [
