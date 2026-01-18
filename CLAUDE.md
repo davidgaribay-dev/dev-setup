@@ -170,17 +170,48 @@ Located in `packages/web/app/`:
 
 ### Hook Architecture
 
-The Claude Code hook at `~/.claude/hooks/rewind/hook.py`:
+The Claude Code hook source is at `.claude/hooks/rewind_hook.py` in this repo. Users copy it to `~/.claude/hooks/rewind_hook.py`.
 
+**Hook Features:**
 - **No dependencies**: Uses only Python stdlib (urllib, json)
-- **State tracking**: Tracks processed lines per transcript file to avoid duplicates
+- **State tracking**: Tracks processed lines per transcript file in `~/.claude/state/rewind/state.json`
 - **Incremental updates**: Only sends new messages since last run
+- **Batch ingestion**: Uses `POST /api/ingest/batch` for efficiency
 - **Error handling**: Never blocks Claude Code (returns 0 on any error)
+- **Logging**: Writes to `~/.claude/state/rewind/hook.log`
 
-Configuration via environment variables:
+**Configuration via environment variables (set in `~/.claude/settings.json` env section):**
 - `REWIND_API_URL` - API endpoint (default: `http://localhost:8429`)
 - `REWIND_HOOK_ENABLED` - Enable/disable hook (default: `true`)
 - `REWIND_HOOK_DEBUG` - Enable debug logging (default: `false`)
+
+**Hook Installation:**
+```bash
+mkdir -p ~/.claude/hooks
+cp .claude/hooks/rewind_hook.py ~/.claude/hooks/
+```
+
+**settings.json configuration:**
+```json
+{
+  "env": {
+    "REWIND_HOOK_ENABLED": "true",
+    "REWIND_API_URL": "http://localhost:8429"
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/rewind_hook.py"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
 
 ## Environment Variables
 
@@ -205,6 +236,7 @@ Note: `NEO4J_URI` and `NEO4J_USER` are set automatically in Docker Compose and d
 ### API (@rewind/api)
 - **Hono**: Ultra-fast web framework with Node.js server adapter
 - **neo4j-driver**: Official Neo4j JavaScript driver
+- **tsup**: Fast TypeScript bundler (esbuild-based) for production builds
 - **tsx**: TypeScript execution for development
 
 ### Web (@rewind/web)
@@ -248,6 +280,24 @@ Note: `NEO4J_URI` and `NEO4J_USER` are set automatically in Docker Compose and d
 2. View API logs: `pnpm docker:dev:logs:api`
 3. View hook logs: `tail -f ~/.claude/state/rewind/hook.log`
 4. Set `LOG_LEVEL=debug` for verbose output
+
+## API Build System
+
+The API uses **tsup** (esbuild-based bundler) instead of plain `tsc` for production builds:
+
+**Why tsup:**
+- **Fast builds**: ~16ms vs ~1.5s with tsc
+- **No .js extensions**: Uses `moduleResolution: "bundler"` so imports don't need `.js` extensions
+- **Bundles shared package**: The `@rewind/shared` package is bundled inline
+- **External dependencies**: npm packages (hono, neo4j-driver) are kept external
+
+**Configuration files:**
+- [tsup.config.ts](packages/api/tsup.config.ts) - tsup bundler configuration
+- [tsconfig.json](packages/api/tsconfig.json) - TypeScript config with `moduleResolution: "bundler"`
+
+**Build output:**
+- Single `dist/index.js` file with sourcemap
+- External dependencies resolved from `node_modules` at runtime
 
 ## Neo4j Best Practices
 

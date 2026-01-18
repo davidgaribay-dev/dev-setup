@@ -40,7 +40,7 @@ This is a **pnpm monorepo** with four packages:
 │  Claude Code Response → Stop Hook (Python) → API → Neo4j            │
 │                              │                                       │
 │                              ▼                                       │
-│              ~/.claude/hooks/rewind/hook.py                         │
+│              ~/.claude/hooks/rewind_hook.py                         │
 │              (stdlib only - no dependencies)                        │
 │                                                                      │
 └─────────────────────────────────────────────────────────────────────┘
@@ -83,12 +83,12 @@ This is a **pnpm monorepo** with four packages:
 
 Enable automatic real-time ingestion of Claude Code conversations:
 
-### 1. Copy Hook Files
+### 1. Copy Hook File
 
 ```bash
-# Copy hook to Claude hooks directory
-mkdir -p ~/.claude/hooks/rewind
-cp path/to/rewind/hook.py ~/.claude/hooks/rewind/
+# Create hooks directory and copy the hook
+mkdir -p ~/.claude/hooks
+cp .claude/hooks/rewind_hook.py ~/.claude/hooks/
 ```
 
 ### 2. Configure Claude Code
@@ -107,7 +107,7 @@ Add to your `~/.claude/settings.json`:
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ~/.claude/hooks/rewind/hook.py"
+            "command": "python3 ~/.claude/hooks/rewind_hook.py"
           }
         ]
       }
@@ -118,15 +118,37 @@ Add to your `~/.claude/settings.json`:
 
 Now every Claude Code response will automatically be sent to the API and stored in Neo4j!
 
+### Hook Features
+
+- **Pure Python 3 stdlib** - No external dependencies required
+- **Incremental processing** - Only sends new messages since last run (tracks state per transcript file)
+- **Batch ingestion** - Sends multiple messages in a single API call for efficiency
+- **Non-blocking** - Always returns 0 to never block Claude Code, even on errors
+- **Debug logging** - Optional verbose logging for troubleshooting
+
 ### Hook Configuration Options
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `REWIND_HOOK_ENABLED` | `true` | Enable/disable the hook |
 | `REWIND_API_URL` | `http://localhost:8429` | API endpoint URL |
-| `REWIND_HOOK_DEBUG` | `false` | Enable debug logging |
+| `REWIND_HOOK_DEBUG` | `false` | Enable debug logging to `~/.claude/state/rewind/hook.log` |
 
-View hook logs: `tail -f ~/.claude/state/rewind/hook.log`
+### Troubleshooting the Hook
+
+```bash
+# View hook logs
+tail -f ~/.claude/state/rewind/hook.log
+
+# Enable debug mode (add to ~/.claude/settings.json env section)
+"REWIND_HOOK_DEBUG": "true"
+
+# Verify API is running
+curl http://localhost:8429/health
+
+# Check hook state (tracks processed lines per transcript)
+cat ~/.claude/state/rewind/state.json
+```
 
 ---
 
@@ -206,12 +228,17 @@ pnpm docker:dev
 
 ```
 rewind/
+├── .claude/
+│   └── hooks/
+│       └── rewind_hook.py    # Hook source (copy to ~/.claude/hooks/)
+│
 ├── packages/
 │   ├── api/                  # Hono API server (TypeScript)
 │   │   ├── src/
 │   │   │   ├── db/           # Neo4j driver & queries
 │   │   │   ├── routes/       # API routes
 │   │   │   └── index.ts      # Server entry
+│   │   ├── tsup.config.ts    # tsup bundler config
 │   │   ├── package.json
 │   │   └── Dockerfile
 │   │
@@ -234,10 +261,8 @@ rewind/
 ├── docker-compose.dev.yml    # Development config
 └── pnpm-workspace.yaml
 
-# Hook (installed in ~/.claude/hooks/)
-~/.claude/hooks/rewind/
-├── hook.py                   # Python hook (stdlib only)
-└── pyproject.toml
+# After installation, hook is at:
+~/.claude/hooks/rewind_hook.py
 ```
 
 ## Features
@@ -283,6 +308,7 @@ rewind/
 - [Hono](https://hono.dev/) - Ultra-fast web framework
 - [neo4j-driver](https://neo4j.com/docs/javascript-manual/current/) - Official Neo4j JavaScript driver
 - [TypeScript](https://www.typescriptlang.org/) - Type-safe JavaScript
+- [tsup](https://tsup.egoist.dev/) - Fast TypeScript bundler (esbuild-based)
 
 ### Database
 - [Neo4j 5](https://neo4j.com/) - Graph database (Community Edition)
