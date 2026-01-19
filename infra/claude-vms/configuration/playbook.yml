@@ -391,6 +391,13 @@
         line: '[ -f "$HOME/.local/bin/env" ] && source "$HOME/.local/bin/env"'
         state: present
 
+    - name: Set default Claude model to Sonnet
+      ansible.builtin.lineinfile:
+        path: "{{ dev_user_home }}/.bashrc"
+        line: 'export ANTHROPIC_MODEL="sonnet"'
+        regexp: '^export ANTHROPIC_MODEL='
+        state: present
+
     - name: Authenticate gh CLI with token (persists to ~/.config/gh/hosts.yml)
       ansible.builtin.shell: |
         printf '%s' "{{ gh_token }}" | gh auth login --with-token
