@@ -22,6 +22,10 @@ import {
   Sparkles,
   Clock,
   Wrench,
+  Server,
+  User,
+  Network,
+  Monitor,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -136,6 +140,14 @@ export default function ConversationDetail() {
     totalTokens: conversationData.totalTokens,
     inputTokens: conversationData.inputTokens,
     outputTokens: conversationData.outputTokens,
+    // Enterprise metadata
+    hostname: conversationData.hostname,
+    username: conversationData.username,
+    ipAddress: conversationData.ipAddress,
+    platform: conversationData.platform,
+    osVersion: conversationData.osVersion,
+    team: conversationData.team,
+    environment: conversationData.environment,
   };
 
   // Calculate tool usage stats
@@ -335,6 +347,75 @@ export default function ConversationDetail() {
                       }
                     />
                   </div>
+
+                  {/* Client Information */}
+                  {(conversation.hostname || conversation.username || conversation.ipAddress) && (
+                    <>
+                      <Separator />
+                      <div>
+                        <h3 className="text-xs font-medium text-muted-foreground mb-3">Client Information</h3>
+                        <div className="space-y-4">
+                          {conversation.hostname && (
+                            <PropertyRow
+                              icon={Server}
+                              label="Hostname"
+                              value={
+                                <span className="text-xs truncate max-w-[120px]" title={conversation.hostname}>
+                                  {conversation.hostname}
+                                </span>
+                              }
+                            />
+                          )}
+                          {conversation.username && (
+                            <PropertyRow
+                              icon={User}
+                              label="User"
+                              value={conversation.username}
+                            />
+                          )}
+                          {conversation.ipAddress && (
+                            <PropertyRow
+                              icon={Network}
+                              label="IP Address"
+                              value={
+                                <span className="font-mono text-xs">{conversation.ipAddress}</span>
+                              }
+                            />
+                          )}
+                          {conversation.platform && (
+                            <PropertyRow
+                              icon={Monitor}
+                              label="Platform"
+                              value={
+                                <span className="text-xs">
+                                  {conversation.platform}
+                                  {conversation.osVersion && ` (${conversation.osVersion})`}
+                                </span>
+                              }
+                            />
+                          )}
+                          {conversation.team && (
+                            <PropertyRow
+                              icon={User}
+                              label="Team"
+                              value={conversation.team}
+                            />
+                          )}
+                          {conversation.environment && (
+                            <PropertyRow
+                              icon={Server}
+                              label="Environment"
+                              value={
+                                <Badge variant="outline" className="text-xs font-normal">
+                                  {conversation.environment}
+                                </Badge>
+                              }
+                            />
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
 
                   {/* Token breakdown */}
                   {(conversation.inputTokens > 0 || conversation.outputTokens > 0) && (

@@ -138,14 +138,21 @@ export async function getProjectConversations(projectId: string): Promise<Conver
 export async function getConversation(conversationId: string): Promise<Conversation | null> {
   const session = getSession();
   try {
-    // Get conversation metadata
+    // Get conversation metadata including enterprise fields
     const convResult = await session.executeRead(async (tx) => {
       return tx.run(
         `
         MATCH (c:Rewind_Conversation {sessionId: $conversationId})
         RETURN c.sessionId as sessionId,
                c.uuid as uuid,
-               c.timestamp as timestamp
+               c.timestamp as timestamp,
+               c.hostname as hostname,
+               c.ipAddress as ipAddress,
+               c.username as username,
+               c.platform as platform,
+               c.osVersion as osVersion,
+               c.team as team,
+               c.environment as environment
       `,
         { conversationId }
       );
@@ -274,6 +281,14 @@ export async function getConversation(conversationId: string): Promise<Conversat
       inputTokens,
       outputTokens,
       totalTokens: inputTokens + outputTokens,
+      // Enterprise metadata
+      hostname: convRecord.get('hostname') || undefined,
+      ipAddress: convRecord.get('ipAddress') || undefined,
+      username: convRecord.get('username') || undefined,
+      platform: convRecord.get('platform') || undefined,
+      osVersion: convRecord.get('osVersion') || undefined,
+      team: convRecord.get('team') || undefined,
+      environment: convRecord.get('environment') || undefined,
     };
   } finally {
     await session.close();
@@ -302,7 +317,12 @@ export async function getRecentConversations(limit = 20): Promise<(Conversation 
                COALESCE(firstMsg.type, 'user') as type,
                firstMsg.model as model,
                inputTokens,
-               outputTokens
+               outputTokens,
+               c.hostname as hostname,
+               c.ipAddress as ipAddress,
+               c.username as username,
+               c.team as team,
+               c.environment as environment
         ORDER BY c.starred DESC, c.timestamp DESC
         LIMIT $limit
       `,
@@ -324,6 +344,12 @@ export async function getRecentConversations(limit = 20): Promise<(Conversation 
       outputTokens: toNumber(record.get('outputTokens')),
       totalTokens: toNumber(record.get('inputTokens')) + toNumber(record.get('outputTokens')),
       messages: [],
+      // Enterprise metadata
+      hostname: record.get('hostname') || undefined,
+      ipAddress: record.get('ipAddress') || undefined,
+      username: record.get('username') || undefined,
+      team: record.get('team') || undefined,
+      environment: record.get('environment') || undefined,
     }));
   } finally {
     await session.close();

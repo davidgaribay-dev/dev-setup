@@ -12,11 +12,23 @@ interface IngestPayload {
   message: ConversationMessage;
 }
 
+interface ClientMetadata {
+  hostname?: string;
+  ipAddress?: string;
+  username?: string;
+  platform?: string;
+  osVersion?: string;
+  team?: string;
+  environment?: string;
+  collectedAt?: string;
+}
+
 interface BatchIngestPayload {
   projectId: string;
   projectPath: string;
   conversationId: string;
   messages: ConversationMessage[];
+  metadata?: ClientMetadata;
 }
 
 /**
@@ -118,7 +130,8 @@ async function ensureProjectAndConversation(
   projectId: string,
   projectPath: string,
   conversationId: string,
-  firstMessage: ConversationMessage
+  firstMessage: ConversationMessage,
+  metadata?: ClientMetadata
 ): Promise<void> {
   // Ensure project exists
   await tx.run(
@@ -132,14 +145,28 @@ async function ensureProjectAndConversation(
     { projectId, projectPath }
   );
 
-  // Ensure conversation exists
+  // Ensure conversation exists with metadata
   await tx.run(
     `
     MATCH (p:Rewind_Project {id: $projectId})
     MERGE (c:Rewind_Conversation {sessionId: $conversationId})
     ON CREATE SET c.uuid = $uuid,
                   c.timestamp = datetime($timestamp),
-                  c.createdAt = datetime()
+                  c.createdAt = datetime(),
+                  c.hostname = $hostname,
+                  c.ipAddress = $ipAddress,
+                  c.username = $username,
+                  c.platform = $platform,
+                  c.osVersion = $osVersion,
+                  c.team = $team,
+                  c.environment = $environment
+    ON MATCH SET c.hostname = COALESCE($hostname, c.hostname),
+                 c.ipAddress = COALESCE($ipAddress, c.ipAddress),
+                 c.username = COALESCE($username, c.username),
+                 c.platform = COALESCE($platform, c.platform),
+                 c.osVersion = COALESCE($osVersion, c.osVersion),
+                 c.team = COALESCE($team, c.team),
+                 c.environment = COALESCE($environment, c.environment)
     MERGE (p)-[:HAS_CONVERSATION]->(c)
     `,
     {
@@ -147,6 +174,13 @@ async function ensureProjectAndConversation(
       conversationId,
       uuid: firstMessage.uuid,
       timestamp: firstMessage.timestamp,
+      hostname: metadata?.hostname || null,
+      ipAddress: metadata?.ipAddress || null,
+      username: metadata?.username || null,
+      platform: metadata?.platform || null,
+      osVersion: metadata?.osVersion || null,
+      team: metadata?.team || null,
+      environment: metadata?.environment || null,
     }
   );
 }
@@ -155,7 +189,7 @@ async function ensureProjectAndConversation(
 app.post('/batch', async (c) => {
   try {
     const payload: BatchIngestPayload = await c.req.json();
-    const { projectId, projectPath, conversationId, messages } = payload;
+    const { projectId, projectPath, conversationId, messages, metadata } = payload;
 
     if (!projectId || !conversationId || !messages || !Array.isArray(messages)) {
       return c.json({ error: 'Missing required fields' }, 400);
@@ -169,7 +203,8 @@ app.post('/batch', async (c) => {
     try {
       await session.executeWrite(async (tx) => {
         // Ensure project and conversation exist (once for all messages)
-        await ensureProjectAndConversation(tx, projectId, projectPath, conversationId, messages[0]);
+        // Include metadata for enterprise analytics
+        await ensureProjectAndConversation(tx, projectId, projectPath, conversationId, messages[0], metadata);
 
         // Process all messages in the same transaction
         for (const message of messages) {

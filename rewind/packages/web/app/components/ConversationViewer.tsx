@@ -1,4 +1,4 @@
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Monitor, User, Network, Server } from 'lucide-react';
 import type { Conversation } from '~/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ScrollArea } from './ui/scroll-area';
@@ -40,6 +40,17 @@ export function ConversationViewer({ conversation, onBack }: ConversationViewerP
             <>
               <span className="text-muted-foreground">•</span>
               <Badge variant="secondary">{formatNumber(conversation.totalTokens)} tokens</Badge>
+            </>
+          )}
+          {(conversation.hostname || conversation.username) && (
+            <>
+              <span className="text-muted-foreground">•</span>
+              <span className="text-sm text-muted-foreground">
+                {conversation.username && conversation.hostname
+                  ? `${conversation.username}@${conversation.hostname}`
+                  : conversation.hostname || conversation.username}
+                {conversation.ipAddress && ` (${conversation.ipAddress})`}
+              </span>
             </>
           )}
         </div>
@@ -120,6 +131,76 @@ export function ConversationViewer({ conversation, onBack }: ConversationViewerP
                   </div>
                 )}
               </div>
+
+              {/* Enterprise Metadata Section */}
+              {(conversation.hostname || conversation.username || conversation.ipAddress || conversation.platform) && (
+                <div className="mt-6">
+                  <h3 className="text-sm font-medium text-muted-foreground mb-3">Client Information</h3>
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                    {conversation.hostname && (
+                      <div className="p-4 border rounded-lg">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                          <Server className="h-3.5 w-3.5" />
+                          <span>Hostname</span>
+                        </div>
+                        <div className="text-lg font-medium truncate" title={conversation.hostname}>
+                          {conversation.hostname}
+                        </div>
+                      </div>
+                    )}
+                    {conversation.username && (
+                      <div className="p-4 border rounded-lg">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                          <User className="h-3.5 w-3.5" />
+                          <span>User</span>
+                        </div>
+                        <div className="text-lg font-medium truncate" title={conversation.username}>
+                          {conversation.username}
+                        </div>
+                      </div>
+                    )}
+                    {conversation.ipAddress && (
+                      <div className="p-4 border rounded-lg">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                          <Network className="h-3.5 w-3.5" />
+                          <span>IP Address</span>
+                        </div>
+                        <div className="text-lg font-medium font-mono">
+                          {conversation.ipAddress}
+                        </div>
+                      </div>
+                    )}
+                    {conversation.platform && (
+                      <div className="p-4 border rounded-lg">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                          <Monitor className="h-3.5 w-3.5" />
+                          <span>Platform</span>
+                        </div>
+                        <div className="text-lg font-medium">
+                          {conversation.platform}
+                          {conversation.osVersion && (
+                            <span className="text-sm text-muted-foreground ml-1">
+                              ({conversation.osVersion})
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    {conversation.team && (
+                      <div className="p-4 border rounded-lg">
+                        <div className="text-sm text-muted-foreground mb-1">Team</div>
+                        <div className="text-lg font-medium">{conversation.team}</div>
+                      </div>
+                    )}
+                    {conversation.environment && (
+                      <div className="p-4 border rounded-lg">
+                        <div className="text-sm text-muted-foreground mb-1">Environment</div>
+                        <div className="text-lg font-medium">{conversation.environment}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </ScrollArea>
         </TabsContent>

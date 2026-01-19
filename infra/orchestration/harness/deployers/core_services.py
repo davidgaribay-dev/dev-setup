@@ -40,6 +40,7 @@ class CoreServicesDeployer(BaseDeployer):
         log.bullet(f"Plane HTTPS Port: {self.config.core_services.https_port}")
         log.bullet(f"Rewind API Port: {self.config.core_services.rewind_api_port}")
         log.bullet(f"Rewind Web Port: {self.config.core_services.rewind_web_port}")
+        log.bullet(f"Neo4j IP: {self.config.neo4j.ip}")
 
     def _provision(self, **kwargs) -> None:
         """Provision the Core Services VM."""
@@ -53,7 +54,11 @@ class CoreServicesDeployer(BaseDeployer):
         """Configure Core Services using Ansible."""
         ansible = self.get_ansible_manager()
         ansible.install_requirements()
-        ansible.run_playbook()
+        # Pass Neo4j IP from central config to ensure consistency
+        extra_vars = {
+            "neo4j_ip": self.config.neo4j.ip,
+        }
+        ansible.run_playbook(extra_vars=extra_vars)
 
     def _destroy(self, tofu: OpenTofuManager, **kwargs) -> None:
         """Destroy the Core Services VM."""

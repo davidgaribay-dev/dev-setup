@@ -60,11 +60,22 @@
   "enabledPlugins": {
     "worktree@dg-marketplace": true,
     "git-workflow@dg-marketplace": true,
-    "rewind@dg-marketplace": true,
     "single-command-enforcer@dg-marketplace": true,
     "gopls-lsp@claude-plugins-official": true,
     "pyright-lsp@claude-plugins-official": true,
     "typescript-lsp@claude-plugins-official": true
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/rewind_hook.py"
+          }
+        ]
+      }
+    ]
   },
   "cleanupPeriodDays": 14,
   "respectGitignore": true,

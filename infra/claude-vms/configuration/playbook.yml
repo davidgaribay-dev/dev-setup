@@ -484,8 +484,33 @@
         state: directory
         mode: '0755'
 
-    # Note: Hooks are now managed via plugins (single-command-enforcer@dg-marketplace)
-    # configured in settings.json enabledPlugins
+    # Clear plugin cache to ensure fresh plugin installations
+    # Workaround for known bugs:
+    # - https://github.com/anthropics/claude-code/issues/14061
+    # - https://github.com/anthropics/claude-code/issues/15642
+    # - https://github.com/anthropics/claude-code/issues/15369
+    - name: Clear Claude Code plugin cache (workaround for stale cache bug)
+      ansible.builtin.file:
+        path: "{{ dev_user_home }}/.claude/plugins/cache"
+        state: absent
+
+    - name: Create Claude Code hooks directory
+      ansible.builtin.file:
+        path: "{{ dev_user_home }}/.claude/hooks"
+        state: directory
+        mode: '0755'
+
+    # Workaround: Stop hooks don't work via plugins (known bug)
+    # https://github.com/anthropics/claude-code/issues/10412
+    # Install rewind hook directly to ~/.claude/hooks/
+    - name: Install rewind hook (Stop hook workaround)
+      ansible.builtin.get_url:
+        url: "https://raw.githubusercontent.com/davidgaribay-dev/dg-marketplace/main/plugins/rewind/hooks/rewind_hook.py"
+        dest: "{{ dev_user_home }}/.claude/hooks/rewind_hook.py"
+        mode: '0755'
+
+    # Note: Other plugins (single-command-enforcer) work via plugins system
+    # Only Stop hooks have the bug, PreToolUse hooks work fine
 
     - name: Configure Claude Code settings
       ansible.builtin.template:

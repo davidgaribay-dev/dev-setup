@@ -29,7 +29,9 @@ rewind_enabled: true
 rewind_docker_dir: "{{ core_services_user_home }}/rewind"
 
 # Neo4j connection (external VM)
-neo4j_ip: "{{ lookup('env', 'NEO4J_IP') | default('10.0.70.60', true) }}"
+# neo4j_ip is passed from orchestrator via -e flag (from config.yaml)
+# This default is only used when running Ansible manually
+neo4j_ip: "{{ neo4j_ip | default('10.0.70.50') }}"
 neo4j_bolt_port: 7687
 neo4j_password: "{{ lookup('env', 'NEO4J_PASSWORD') | default('changeme', true) }}"
 

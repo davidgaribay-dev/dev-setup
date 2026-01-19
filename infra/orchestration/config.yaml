@@ -2,7 +2,7 @@
 # Shared settings for all deployment scripts
 
 neo4j:
-  ip: "10.0.70.60"
+  ip: "10.0.70.50"
   bolt_port: 7687
   http_port: 7474
   username: "neo4j"

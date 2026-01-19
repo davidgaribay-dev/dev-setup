@@ -95,6 +95,14 @@ export interface Conversation {
   totalTokens?: number;
   inputTokens?: number;
   outputTokens?: number;
+  // Enterprise metadata (captured from client VM)
+  hostname?: string;
+  ipAddress?: string;
+  username?: string;
+  platform?: string;
+  osVersion?: string;
+  team?: string;
+  environment?: string;
 }
 
 export interface Project {

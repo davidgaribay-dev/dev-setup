@@ -15,3 +15,9 @@ containers/gitea/postgres/
 # Ansible
 **/inventory/hosts.json
 /tmp/ansible_facts_cache/
+
+node_modules/
+
+# Build outputs
+**/build/
+**/dist/

@@ -52,8 +52,9 @@ def core_services(
         PLANE_LIVE_SECRET_KEY     Live server key (generate with: openssl rand -hex 16)
         PLANE_POSTGRES_PASSWORD   PostgreSQL password
         PLANE_RABBITMQ_PASSWORD   RabbitMQ password
-        NEO4J_IP                  Neo4j server IP (default: 10.0.70.60)
         NEO4J_PASSWORD            Neo4j password for Rewind
+
+    Note: Neo4j IP is read from config.yaml (neo4j.ip), not from environment.
 
     \b
     Examples:
