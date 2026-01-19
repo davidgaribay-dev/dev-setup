@@ -34,14 +34,22 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY packages/api/package.json ./packages/api/
 COPY packages/shared/package.json ./packages/shared/
 
-# Install production dependencies only
-RUN pnpm install --frozen-lockfile --prod
+# Install production dependencies only and clean up
+RUN pnpm install --frozen-lockfile --prod && \
+    pnpm store prune
 
 # Copy built files
 COPY --from=builder /app/packages/api/dist ./packages/api/dist
 
 WORKDIR /app/packages/api
 
+# Use non-root user (node user exists in base image, uid 1000)
+USER node
+
 EXPOSE 8429
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8429/health || exit 1
 
 CMD ["node", "dist/index.js"]
