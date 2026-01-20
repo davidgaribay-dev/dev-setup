@@ -40,13 +40,13 @@ variable "vms" {
 variable "cpu_cores" {
   description = "Default number of CPU cores per VM"
   type        = number
-  default     = 2
+  default     = 6
 }
 
 variable "memory" {
   description = "Default memory in MB per VM"
   type        = number
-  default     = 2048
+  default     = 12288
 }
 
 variable "network_bridge" {
